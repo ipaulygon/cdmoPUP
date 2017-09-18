@@ -1,0 +1,648 @@
+﻿@using WebMatrix.Data;
+@{
+    ViewBag.Title = "Employees";
+    Layout = "~/Views/Shared/_LayoutAdminMaintenance.cshtml";
+    var db = Database.Open("dbConnect");
+    var view = db.Query("SELECT * FROM tblEmployee,tblJobTitle " +
+        "WHERE strEmpJobId=strJobTId");
+    var selectEmp = "SELECT * FROM tblEmployee,tblJobTitle " +
+        "WHERE strEmpJobId=strJobTId AND strEmpId=(@0)";
+    var viewJob = db.Query("SELECT * FROM tblJobTitle ORDER BY strJobTName");
+    var viewSkill = db.Query("SELECT * FROM tblJobSkill WHERE intJobSStatus=1 ORDER BY strJobSName");
+    var selectEmpSkill = "SELECT * FROM tblEmpSkill,tblJobSkill,tblEmployee " +
+        "WHERE strEmpId=strEmpSEmpId AND strEmpSJobSId=strJobSId AND strEmpId=(@0)";
+    var count = db.QueryValue("SELECT COUNT(*) FROM tblEmployee") + 1;
+    var leftPad = "SELECT CONCAT('EMP-', LPAD((@0),4,'0'))";
+    var empId = db.QueryValue(leftPad, count);
+    var viewId = Request["viewId"];
+    var editId = Request["editId"];
+    var empFirst = "";
+    var empMiddle = "";
+    var empLast = "";
+    var empContact = "";
+    var empBirth = "";
+    var empHired = "";
+    var empJob = "";
+    string[] error = new String[10];
+    string[] errorEdit = new String[10];
+    var valid = 0;
+    var validEdit = 0;
+    if (viewId != null)
+    {
+        <script>
+            $(document).ready(function () {
+                $("#views").modal();
+            });
+        </script>
+    }
+    if (editId != null)
+    {
+        <script>
+            $(document).ready(function () {
+                $("#edits").modal();
+            });
+        </script>
+    }
+    if (IsPost)
+    {
+        if (Request.Form["submitAdd"] != null)
+        {
+            empFirst = Request["empFirst"].Trim();
+            empMiddle = Request["empMiddle"].Trim();
+            empLast = Request["empLast"].Trim();
+            empContact = Request["empContact"].Trim();
+            empBirth = Request["empBirth"];
+            empHired = Request["empHired"];
+            empJob = Request["empJob"];
+            var empSkills = Request.Form.GetValues("empSkill");
+            if (empFirst.IsEmpty() || empLast.IsEmpty())
+            {
+                valid++; error[0] = "Please fill out required names";
+            }
+            if (empContact.IsEmpty())
+            {
+                valid++; error[1] = "Contact number is required";
+            }
+            if (empBirth.IsEmpty())
+            {
+                valid++; error[2] = "Birth Date is required";
+            }
+            if (empHired.IsEmpty())
+            {
+                valid++; error[3] = "Hire Date is required";
+            }
+            if (empJob.IsEmpty())
+            {
+                valid++; error[4] = "Please select a job";
+            }
+            if (empSkills == null)
+            {
+                valid++; error[5] = "Please select at least one skill";
+            }
+            foreach (var x in view)
+            {
+                var fullQuery = x.strEmpFirst + x.strEmpMiddle + x.strEmpLast;
+                var fullGet = empFirst + empMiddle + empLast;
+                if (fullQuery.Equals(fullGet))
+                {
+                    valid++;error[6] = "Employee Already Exists";
+                }
+            }
+            if (valid == 0)
+            {
+                var insert = "INSERT INTO tblEmployee " +
+                    "(strEmpId,strEmpFirst,strEmpMiddle,strEmpLast,strEmpContact,dtmEmpBirth,dtmEmpHired,strEmpJobId,dtmEmpUpdated,intEmpStatus) " +
+                    "VALUES (@0,@1,@2,@3,@4,@5,@6,@7,@8,@9)";
+                db.Execute(insert, empId, empFirst, empMiddle, empLast, empContact, empBirth, empHired, empJob, DateTime.Now, 1);
+                var insertSkill = "INSERT INTO tblEmpSkill (strEmpSEmpId,strEmpSJobSId) VALUES (@0,@1)";
+                for(int x = 0; x < empSkills.Length; x++)
+                {
+                    db.Execute(insertSkill, empId, empSkills[x]);
+                }
+                <script>
+                    $(document).ready(function () {
+                        $("#edits").modal('hide');
+                        $("#success").modal({ backdrop: "static" });
+                        setTimeout(function () {
+                            $("#success").hide();
+                            window.location.href = "../Admin/Employee";
+                        }, 2000);
+                    });
+                </script>
+            }
+            else
+            {
+                <script>
+                    $(document).ready(function () {
+                        $("#add1").modal();
+                        $("#edits").modal('hide');
+                    });
+                </script>
+            }
+        }
+        if (Request.Form["submitEdit"] != null)
+        {
+            var eempFirst = Request["eempFirst"].Trim();
+            var eempMiddle = Request["eempMiddle"].Trim();
+            var eempLast = Request["eempLast"].Trim();
+            var eempContact = Request["eempContact"].Trim();
+            var eempBirth = Request["eempBirth"];
+            var eempHired = Request["eempHired"];
+            var eempJob = Request["eempJob"];
+            var eempSkills = Request.Form.GetValues("eempSkill");
+            var eempStatus = Request["eEmpStatus"];
+            if (eempFirst.IsEmpty() || eempLast.IsEmpty())
+            {
+                validEdit++; errorEdit[0] = "Please fill out required names";
+            }
+            if (eempContact.IsEmpty())
+            {
+                validEdit++; errorEdit[1] = "Contact number is required";
+            }
+            if (eempBirth.IsEmpty())
+            {
+                validEdit++; errorEdit[2] = "Birth Date is required";
+            }
+            if (eempHired.IsEmpty())
+            {
+                validEdit++; errorEdit[3] = "Hire Date is required";
+            }
+            if (eempJob.IsEmpty())
+            {
+                validEdit++; errorEdit[4] = "Please select a job";
+            }
+            if (eempSkills == null)
+            {
+                validEdit++; errorEdit[5] = "Please select at least one skill";
+            }
+            foreach (var x in view)
+            {
+                var fullQuery = x.strEmpFirst + x.strEmpMiddle + x.strEmpLast;
+                var fullGet = eempFirst + eempMiddle + eempLast;
+                if (fullQuery.Equals(fullGet) && editId != x.strEmpId)
+                {
+                    validEdit++;errorEdit[6] = "Employee Already Exists";
+                }
+            }
+            if (validEdit == 0)
+            {
+                var update = "UPDATE tblEmployee SET strEmpFirst=(@0),strEmpMiddle=(@1),strEmpLast=(@2),strEmpContact=(@3),dtmEmpBirth=(@4),dtmEmpHired=(@5),strEmpJobId=(@6),dtmEmpUpdated=(@7),intEmpStatus=(@8) WHERE strEmpId=(@9)";
+                db.Execute(update,eempFirst,eempMiddle,eempLast,eempContact,eempBirth,eempHired,eempJob,DateTime.Now,eempStatus,editId);
+                var delete = "DELETE FROM tblEmpSkill WHERE strEmpSEmpId=(@0)";
+                db.Execute(delete, editId);
+                var insertSkill = "INSERT INTO tblEmpSkill (strEmpSEmpId,strEmpSJobSId) VALUES (@0,@1)";
+                for(int x = 0; x < eempSkills.Length; x++)
+                {
+                    db.Execute(insertSkill, editId, eempSkills[x]);
+                }
+                <script>
+                    $(document).ready(function () {
+                        $("#edits").modal('hide');
+                        $("#success").modal({ backdrop: "static" });
+                        setTimeout(function () {
+                            $("#success").hide();
+                            window.location.href = "../Admin/Employee";
+                        }, 2000);
+                    });
+                </script>
+            }
+            else
+            {
+                <script>
+                    $(document).ready(function () {
+                        $("#edits").modal();
+                    });
+                </script>
+            }
+        }
+    }
+    <script>
+        $(document).ready(function () {
+            $('#tableData').DataTable();
+            $('#searchSkill').DataTable({
+                "pageLength": 100,
+                "paging": false
+            });
+            $('#esearchSkill').DataTable({
+                "pageLength": 100,
+                "paging": false
+            });
+        });
+        $(document).on("click", "#view", function () {
+            var viewId = $(this).data("id");
+            window.location.href = "../Admin/Employee?viewId=" + viewId;
+        });
+        $(document).on("click", "#edit", function () {
+            var editId = $(this).data("id");
+            window.location.href = "../Admin/Employee?editId=" + editId;
+        });
+        function validate(event,idx) {
+            var char = String.fromCharCode(event.which);
+            var patt = /[\d`~!#$%^&*()_+={}|:";@@<>,?\\//\[\]]/;
+            var res = patt.test(char);
+            if (res) {
+                $('#' + idx + '').popover('show');
+                return false;
+            }
+            else {
+                $('#' + idx + '').popover('hide');
+            }
+        }
+        function contact(event, idx) {
+            var char = String.fromCharCode(event.which);
+            var patt = /[A-Za-z`~!#$%^&*()_+={}|:";@@'<>,.?\\//\[\]]/;
+            var res = patt.test(char);
+            if (res) {
+                $('#' + idx + '').popover('show');
+                return false;
+            }
+            else {
+                $('#' + idx + '').popover('hide');
+            }
+        }
+        $(document).ready(function () {
+            var $rows = $("#searchSkill tr");
+            $("#searchSkill").keyup(function () {
+                var val = $.trim(this.value);
+                if (val === ""){
+                    $rows.show();
+                }
+                else {
+                    $rows.hide();
+                    $rows.has("td:contains(" + val + ")").show();
+                }
+            });
+        });
+        $(document).ready(function () {
+            var $rows = $("#esearchSkill tr");
+            $("#esearchSkill").keyup(function () {
+                var val = $.trim(this.value);
+                if (val === "") {
+                    $rows.show();
+                }
+                else {
+                    $rows.hide();
+                    $rows.has("td:contains(" + val + ")").show();
+                }
+            });
+        });
+        function addTo(chk, idx) {
+            var table = document.getElementById("tableSkill");
+            if (chk.checked) {
+                var x = document.getElementById("tableSkill").rows.length;
+                var row = table.insertRow(x);
+                var cell1 = row.insertCell(0)
+                cell1.innerHTML = '<input type="text" class="form-control noBorder" readonly/>';
+                table.rows[x].cells[0].children[0].setAttribute("value", idx);
+                table.rows[x].cells[0].children[0].setAttribute("id", idx);
+                table.rows[x].setAttribute("id", idx);
+            }
+            else {
+                var x = table.rows.namedItem(idx);
+                table.deleteRow(x.rowIndex);
+            }
+        }
+        function addToEdit(chk, title, idx) {
+            var table = document.getElementById("tableeSkill");
+            if (chk.checked) {
+                var x = document.getElementById("tableeSkill").rows.length;
+                var row = table.insertRow(x);
+                var cell1 = row.insertCell(0);
+                cell1.innerHTML = '<input type="text" class="form-control noBorder" readonly/>';
+                table.rows[x].cells[0].children[0].setAttribute("value", title);
+                table.rows[x].cells[0].children[0].setAttribute("id", idx);
+                table.rows[x].setAttribute("id", title);
+            }
+            else {
+                var x = table.rows.namedItem(title);
+                table.deleteRow(x.rowIndex);
+            }
+        }
+    </script>
+}
+<div class="navbar navbar-default">
+    <div class="navbar-header">
+        <div class="navbar-brand">Personnel</div>
+        <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#myNavbar1">
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+        </button>
+    </div>
+    <div class="collapse navbar-collapse" id="myNavbar1">
+        <ul class="nav navbar-nav navbar-right">
+            <li><a href="../Admin/JobTitle">Job Titles</a></li>
+            <li><a href="../Admin/JobSkill">Job Skills</a></li>
+            <li class="active"><a href="../Admin/Employee">Employees</a></li>
+        </ul>
+    </div>
+</div>
+<hr />
+<!--TABLE-->
+<div class="row">
+    <div class="col-md-12">
+        <div class="col-md-12" style="margin-bottom: 1%">
+            <div class="col-md-2"><button class="btn btn-default" data-toggle="modal" data-target="#add1">Add Employee</button></div>
+        </div>
+        <div class="col-md-12">
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <h1 class="panel-title">Existing Employees</h1>
+                </div>
+                <div class="panel-body">
+                    <div class="table-responsive">
+                        <table id="tableData" class="table dataTable no-footer" role="grid">
+                            <thead>
+                                <tr>
+                                    <th>Employee Id</th>
+                                    <th>Employee Name</th>
+                                    <th>Job</th>
+                                    <th>Contact</th>
+                                    <th>Birthday</th>
+                                    <th>Is Active</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @{
+                                    foreach (var x in view)
+                                    {
+                                        <tr>
+                                            <td>@x.strEmpId</td>
+                                            <td>@x.strEmpFirst @x.strEmpMiddle @x.strEmpLast</td>
+                                            <td>@x.strJobTName</td>
+                                            <td>@x.strEmpContact</td>
+                                            <td>@x.dtmEmpBirth.ToString()</td>
+                                            <td>@x.intEmpStatus</td>
+                                            <td>
+                                                <!--<button class="btn btn-primary" id="view" name="view" data-id="@x.strEmpId">View</button>-->
+                                                <button class="btn btn-success" id="edit" name="edit" data-id="@x.strEmpId">Edit</button>
+                                            </td>
+                                        </tr>
+                                    }
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!--ADD-->
+<div class="modal fade" id="add1" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg" role="document">
+        <form action="" method="post">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    <h4 class="modal-title">Add Title</h4>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-12">
+                            @{
+                                if (valid != 0)
+                                {
+                                    <div class="alert alert-danger" role="alert">
+                                        <ul>
+                                            @{
+                                                for (int x = 0; x < error.Length; x++)
+                                                {
+                                                    if (error[x] != null)
+                                                    {
+                                                        <li>@error[x]</li>
+                                                    }
+                                                }
+                                            }
+                                        </ul>
+                                    </div>
+                                                }
+                            }
+                            <div style="text-align:center"><label>!--EMPLOYEE INFORMATION--!</label></div><hr />
+                            <label>Employee Id: @empId</label><br /><br />
+                            <div class="col-md-4">
+                                <label>First Name:*</label><br />
+                                <input type="text" class="form-control" id="empFirst" name="empFirst" placeholder="First Name" onkeypress="return validate(event, this.id)" data-toggle="popover" value="@empFirst" />
+                            </div>
+                            <div class="col-md-4">
+                                <label>Middle Name:</label><br />
+                                <input type="text" class="form-control" id="empMiddle" name="empMiddle" placeholder="Middle Name" onkeypress="return validate(event, this.id)" data-toggle="popover" value="@empMiddle" />
+                            </div>
+                            <div class="col-md-4">
+                                <label>Last Name:*</label><br />
+                                <input type="text" class="form-control" id="empLast" name="empLast" placeholder="Last Name" onkeypress="return validate(event, this.id)" data-toggle="popover" value="@empLast" />
+                            </div>
+                            <br />
+                            <div class="col-md-4">
+                                <label>Contact Number:*</label><br />
+                                <input type="text" class="form-control" id="empContact" name="empContact" placeholder="Contact Number" onkeypress="return contact(event, this.id)" data-content="Please input a valid contact number i.e(0905-****-***)" data-toggle="popover" value="@empContact" />
+                            </div>
+                            <div class="col-md-4">
+                                <label>Birth Date:*</label><br />
+                                <input type="date" class="form-control" id="empBirth" name="empBirth" min="1900-01-01" max="@DateTime.Today.ToString("d")" value="@empBirth"/>
+                            </div>
+                            <div class="col-md-4">
+                                <label>Hire Date:*</label><br />
+                                <input type="date" class="form-control" id="empHired" name="empHired" min="1900-01-01" max="@DateTime.Today.ToString("d")" value="@empHired" />
+                            </div>
+                            <br />
+                            <div style="text-align:center"><label>!--JOB INFORMATION--!</label></div><hr />
+                            <div class="col-md-6">
+                                <label>Job Title:*</label><br />
+                                <select name="empJob" id="empJob" class="btn btn-default dropdown-toggle" selected="">
+                                    @{
+                                        foreach (var x in viewJob)
+                                        {
+                                            <option value="@x.strJobTId">@x.strJobTName</option>
+                                        }
+                                    }
+                                </select><br /><br />
+                                <div class="dyn table-responsive">
+                                    <table id="searchSkill" class="table dataTable no-footer" role="grid">
+                                        @{
+                                            foreach (var x in viewSkill)
+                                            {
+                                                <tr>
+                                                    <td>@x.strJobSName</td>
+                                                    <td><input type="checkbox" id="@x.strJobSName" name="empSkill" value="@x.strJobSId" onchange="addTo(this,this.id)" /></td>
+                                                </tr>
+                                            }
+                                        }
+                                    </table>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="table-responsive dyn">
+                                    <table id="tableSkill" class="table dataTable no-footer" role="grid">
+                                        <thead>
+                                            <tr>
+                                                <th>Associated Skills</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <label style="float:left">All labels with "*" are required</label>
+                    <input name="submitAdd" type="submit" class="btn btn-default" value="Submit" />
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+<!--EDIT-->
+<div class="modal fade" id="edits" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg" role="document">
+        <form action="" method="post">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    <h4 class="modal-title">Add Title</h4>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-12">
+                            @{
+                                if (validEdit != 0)
+                                {
+                                    <div class="alert alert-danger" role="alert">
+                                        <ul>
+                                            @{
+                                                for (int x = 0; x < errorEdit.Length; x++)
+                                                {
+                                                    if (errorEdit[x] != null)
+                                                    {
+                                                        <li>@errorEdit[x]</li>
+                                                    }
+                                                }
+                                            }
+                                        </ul>
+                                    </div>
+                                                }
+                            }
+                            <div style="text-align:center"><label>!--EMPLOYEE INFORMATION--!</label></div><hr />
+                            @{
+                                var viewEmp = db.Query(selectEmp, editId);
+                                foreach (var x in viewEmp)
+                                {
+                                    <label>Employee Id: @x.strEmpId</label><br /><br />
+                                    <div class="col-md-4">
+                                        <label>First Name:*</label><br />
+                                        <input type="text" class="form-control" id="eempFirst" name="eempFirst" placeholder="First Name" onkeypress="return validate(event, this.id)" data-toggle="popover" value="@x.strEmpFirst" />
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label>Middle Name:</label><br />
+                                        <input type="text" class="form-control" id="eempMiddle" name="eempMiddle" placeholder="Middle Name" onkeypress="return validate(event, this.id)" data-toggle="popover" value="@x.strEmpMiddle" />
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label>Last Name:*</label><br />
+                                        <input type="text" class="form-control" id="eempLast" name="eempLast" placeholder="Last Name" onkeypress="return validate(event, this.id)" data-toggle="popover" value="@x.strEmpLast" />
+                                    </div>
+                                    <br />
+                                    <div class="col-md-4">
+                                        <label>Contact Number:*</label><br />
+                                        <input type="text" class="form-control" id="eempContact" name="eempContact" placeholder="Contact Number" onkeypress="return contact(event, this.id)" data-content="Please input a valid contact number i.e(0905-****-***)" data-toggle="popover" value="@x.strEmpContact" />
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label>Birth Date:*</label><br />
+                                        <input type="date" class="form-control" id="eempBirth" name="eempBirth" min="1900-01-01" max="@DateTime.Today.ToString("d")" value="@x.dtmEmpBirth.ToString()" />
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label>Hire Date:*</label><br />
+                                        <input type="date" class="form-control" id="eempHired" name="eempHired" min="1900-01-01" max="@DateTime.Today.ToString("d")" value="@x.dtmEmpHired.ToString()" />
+                                    </div>
+                                    <div style="text-align:center">
+                                            <label><input type="radio" name="eEmpStatus" id="active" value="1" />Active</label>
+                                            <label><input type="radio" name="eEmpStatus" id="inactive" value="0" />Inactive</label>
+                                    </div>
+                                    if (x.intEmpStatus)
+                                    {
+                                        <script>
+                                            document.getElementById("active").checked = true;
+                                        </script>
+                                    }
+                                    else
+                                    {
+                                        <script>
+                                            document.getElementById("inactive").checked = true;
+                                        </script>
+                                    }
+                                }
+                            }
+                            <br />
+                            <div style="text-align:center"><label>!--JOB INFORMATION--!</label></div><hr />
+                            <div class="col-md-6">
+                                <label>Job Title:*</label><br />
+                                <select name="eempJob" id="eempJob" class="btn btn-default dropdown-toggle" selected="">
+                                    @{
+                                        foreach (var x in viewJob)
+                                        {
+                                            <option value="@x.strJobTId">@x.strJobTName</option>
+                                        }
+                                    }
+                                </select><br /><br />
+                                <div class="table-responsive dyn">
+                                    <table id="esearchSkill" class="table dataTable no-footer" role="grid">
+                                        <thead>
+                                            <tr>
+                                                <th>Skills</th>
+                                                <th>Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @{
+                                                foreach (var x in viewSkill)
+                                                {
+                                                    <tr>
+                                                        <td>@x.strJobSName</td>
+                                                        <td><input type="checkbox" id="@x.strJobSId" title="@x.strJobSName" name="eempSkill" value="@x.strJobSId" onchange="addToEdit(this,this.title,this.id)" /></td>
+                                                    </tr>
+                                                }
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="table-responsive dyn">
+                                    <table id="tableeSkill" class="table dataTable no-footer" role="grid">
+                                        <thead>
+                                            <tr>
+                                                <th>Associated Skills</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            @{
+                                foreach (var x in viewEmp)
+                                {
+                                    <script>
+                                        document.getElementById("eempJob").value = "@x.strEmpJobId";
+                                    </script>
+                                }
+                                var viewEmpSkill = db.Query(selectEmpSkill, editId);
+                                foreach (var x in viewEmpSkill)
+                                {
+                                    <script>
+                                        document.getElementById("@x.strJobSId").checked = true;
+                                        var table = document.getElementById("tableeSkill");
+                                        var x = document.getElementById("tableeSkill").rows.length;
+                                        var row = table.insertRow(x);
+                                        var cell1 = row.insertCell(0);
+                                        cell1.innerHTML = '<input type="text" class="form-control noBorder" readonly/>';
+                                        table.rows[x].cells[0].children[0].setAttribute("value", "@x.strJobSName");
+                                        table.rows[x].cells[0].children[0].setAttribute("id", "@x.strJobSId");
+                                        table.rows[x].setAttribute("id", "@x.strJobSName");
+                                    </script>
+                                }
+                            }
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <label style="float:left">All labels with "*" are required</label>
+                    <input name="submitEdit" type="submit" class="btn btn-default" value="Submit" />
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+<!--SUCCESS-->
+<div class="modal fade" id="success" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-sm" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title"><span class="success">SUCCESS</span></h4>
+            </div>
+            <div class="modal-body">
+                <p>SUCCESS!</p>
+            </div>
+        </div>
+    </div>
+</div>

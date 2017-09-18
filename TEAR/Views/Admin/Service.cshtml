@@ -1,0 +1,346 @@
+﻿@using WebMatrix.Data;
+@{
+    ViewBag.Title = "Service";
+    Layout = "~/Views/Shared/_LayoutAdminMaintenance.cshtml";
+    var db = Database.Open("dbConnect");
+    var view = db.Query("SELECT * FROM tblService");
+    var selectService = "SELECT * FROM tblService WHERE strServId=(@0)";
+    var count = db.QueryValue("SELECT COUNT(*) FROM tblService") + 1;
+    var leftPad = "SELECT CONCAT('SERV-', LPAD((@0),4,'0'))";
+    var servId = db.QueryValue(leftPad, count);
+    var viewId = Request["viewId"];
+    var editId = Request["editId"];
+    var servName = "";
+    var servDesc = "";
+    string[] error = new string[5];
+    string[] errorEdit = new string[5];
+    var valid = 0;
+    var validEdit = 0;
+    if (viewId != null)
+    {
+        <script>
+            $(document).ready(function () {
+                $("#views").modal();
+            });
+        </script>
+    }
+    if (editId != null)
+    {
+        <script>
+            $(document).ready(function () {
+                $("#edits").modal();
+            });
+        </script>
+    }
+    if (IsPost)
+    {
+        if (Request.Form["submitAdd"] != null)
+        {
+            servName = Request["servName"].Trim();
+            servDesc = Request["servDesc"].Trim();
+            if (servName.IsEmpty())
+            {
+                valid++;
+                error[0] = "Service Name is Required";
+            }
+            foreach (var x in view)
+            {
+                if (servName == x.strServName)
+                {
+                    valid++; error[1] = "Service already taken";
+                }
+            }
+            if (valid == 0)
+            {
+                var insert = "INSERT INTO tblService (strServId, strServName, strServDesc, intServStatus) VALUES (@0,@1,@2,@3)";
+                db.Query(insert, servId, servName, servDesc,1);
+                <script>
+                    $(document).ready(function () {
+                        $("#views").modal('hide');
+                        $("#edits").modal('hide');
+                        $("#success").modal({ backdrop: "static" });
+                        setTimeout(function () {
+                            $("#success").hide();
+                            window.location.href = "../Admin/Service";
+                        }, 2000);
+                    });
+                </script>
+            }
+            else
+            {
+                <script>
+                    $(document).ready(function () {
+                        $("#add1").modal();
+                        $("#views").modal('hide');
+                        $("#edits").modal('hide');
+                    });
+                </script>
+            }
+        }
+        if (Request.Form["submitEdit"] != null)
+        {
+            var eservName = Request["eservName"].Trim();
+            var eservDesc = Request["eservDesc"].Trim();
+            if (eservName.IsEmpty())
+            {
+                validEdit++;
+                errorEdit[0] = "Service Name is Required";
+            }
+            foreach (var x in view)
+            {
+                if (eservName == x.strServName && editId != x.strServId)
+                {
+                    validEdit++; errorEdit[1] = "Service already taken";
+                }
+            }
+            if (validEdit == 0)
+            {
+                var update = "UPDATE tblService SET strServName=(@0), strServDesc=(@1) WHERE strServId=(@2)";
+                db.Query(update, eservName, eservDesc, editId);
+                <script>
+                    $(document).ready(function () {
+                        $("#edits").modal('hide');
+                        $("#success").modal({ backdrop: "static" });
+                        setTimeout(function () {
+                            $("#success").hide();
+                            window.location.href = "../Admin/Service";
+                        }, 2000);
+                    });
+                </script>
+            }
+            else
+            {
+                <script>
+                    $(document).ready(function () {
+                        $("#edits").modal();
+                    });
+                </script>
+            }
+        }
+    }
+    <script>
+        $(document).ready(function () {
+            $('#tableData').DataTable();
+        });
+        function validate(event, idx) {
+            var char = String.fromCharCode(event.which);
+            var patt = /[\d`~!#$%^&*()_+={}|:";@@'<>,.?\\//\[\]]/;
+            var res = patt.test(char);
+            if (res) {
+                $('#' + idx + '').popover('show');
+                return false;
+            }
+            else {
+                $('#' + idx + '').popover('hide');
+            }
+        }
+        $(document).on("click", "#view", function () {
+            var viewId = $(this).data("id");
+            window.location.href = "../Admin/Service?viewId=" + viewId;
+        });
+        $(document).on("click", "#edit", function () {
+            var editId = $(this).data("id");
+            window.location.href = "../Admin/Service?editId=" + editId;
+        });
+    </script>
+}
+<div class="navbar navbar-default">
+    <div class="navbar-header">
+        <div class="navbar-brand">Project Maintenance</div>
+        <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#myNavbar1">
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+        </button>
+    </div>
+    <div class="collapse navbar-collapse" id="myNavbar1">
+        <ul class="nav navbar-nav navbar-right">
+            <li><a href="../Admin/Section">Sections</a></li>
+            <li><a href="../Admin/Office">Offices</a></li>
+            <li class="active"><a href="../Admin/Service">Services</a></li>
+        </ul>
+    </div>
+</div>
+<hr />
+<div class="row">
+    <div class="col-md-12" style="margin-bottom: 1%">
+        <div class="col-md-2"><button class="btn btn-default" data-toggle="modal" data-target="#add1">Add Service</button></div>
+    </div>
+    <div class="col-md-12">
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <h1 class="panel-title">Services</h1>
+            </div>
+            <div class="panel-body">
+                <div class="table-responsive">
+                    <table id="tableData" class="table dataTable no-footer" role="grid">
+                        <thead>
+                            <tr>
+                                <th>Service Id</th>
+                                <th>Service</th>
+                                <th>Description</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @{
+                                foreach (var x in view)
+                                {
+                                    <tr>
+                                        <td>@x.strServId</td>
+                                        <td>@x.strServName</td>
+                                        <td>@x.strServDesc</td>
+                                        <td>
+                                            <button class="btn btn-primary" id="view" name="view" data-id="@x.strServId">View</button>
+                                            <button class="btn btn-success" id="edit" name="edit" data-id="@x.strServId">Edit</button>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!--ADD-->
+<div class="modal fade" id="add1" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-md" role="document">
+        <form action="" method="post">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    <h4 class="modal-title">Add Service</h4>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-12">
+                            @{
+                                if (valid != 0)
+                                {
+                                    <div class="alert alert-danger" role="alert">
+                                        <ul>
+                                            @{
+                                                for (int x = 0; x < error.Length; x++)
+                                                {
+                                                    if (error[x] != null)
+                                                    {
+                                                        <li>@error[x]</li>
+                                                    }
+                                                }
+                                            }
+                                        </ul>
+                                    </div>
+                                                }
+                            }
+                            <label>Service Id: @servId</label><br />
+                            <label>Service Name:*</label>
+                            <input type="text" class="form-control" id="servName" name="servName" placeholder="Service" onkeypress="return validate(event, this.id)" data-toggle="popover" value="@servName" />
+                            <label>Description:</label>
+                            <textarea class="form-control" id="servDesc" name="servDesc" placeholder="Description" onkeypress="return validate(event,this.id)" data-toggle="popover">@servDesc</textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <label style="float:left">All labels with "*" are required</label>
+                    <input name="submitAdd" type="submit" class="btn btn-default" value="Submit" />
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+<!--VIEW-->
+<div class="modal fade" id="views" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-md" role="document">
+        <form action="" method="post">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    <h4 class="modal-title">View Service</h4>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-12">
+                            @{
+                                var viewService = db.Query(selectService, viewId);
+                                foreach (var x in viewService)
+                                {
+                                    <label>Service Id: @x.strServId</label><br />
+                                    <label>Service Name:</label>
+                                    <input type="text" class="form-control" id="vservName" name="vservName" placeholder="Service" value="@x.strServName" readonly />
+                                    <label>Description:</label>
+                                    <textarea class="form-control" id="vservDesc" name="vservDesc" placeholder="Service" readonly>@x.strServDesc</textarea>
+                                }
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+<!--EDIT-->
+<div class="modal fade" id="edits" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-md" role="document">
+        <form action="" method="post">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    <h4 class="modal-title">Edit Service</h4>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-12">
+                            @{
+                                if (validEdit != 0)
+                                {
+                                    <div class="alert alert-danger" role="alert">
+                                        <ul>
+                                            @{
+                                                for (int x = 0; x < error.Length; x++)
+                                                {
+                                                    if (errorEdit[x] != null)
+                                                    {
+                                                        <li>@errorEdit[x]</li>
+                                                    }
+                                                }
+                                            }
+                                        </ul>
+                                    </div>
+                                                }
+                            }
+                            @{
+                                viewService = db.Query(selectService, editId);
+                                foreach (var x in viewService)
+                                {
+                                    <label>Service Id: @x.strServId</label><br />
+                                    <label>Service Name:*</label>
+                                    <input type="text" class="form-control" id="eservName" name="eservName" placeholder="Service" onkeypress="return validate(event, this.id)" data-toggle="popover" value="@x.strServName" />
+                                    <label>Description:</label>
+                                    <textarea class="form-control" id="eservDesc" name="eservDesc" placeholder="Description" onkeypress="return validate(event,this.id)" data-toggle="popover">@x.strServDesc</textarea>
+                                }
+                            }
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <label style="float:left">All labels with "*" are required</label>
+                    <input name="submitEdit" type="submit" class="btn btn-default" value="Submit" />
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+<!--SUCCESS-->
+<div class="modal fade" id="success" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-sm" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title"><span class="success">SUCCESS</span></h4>
+            </div>
+            <div class="modal-body">
+                <p>SUCCESS!</p>
+            </div>
+        </div>
+    </div>
+</div>

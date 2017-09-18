@@ -1,0 +1,504 @@
+﻿@using WebMatrix.Data;
+@{
+    ViewBag.Title = "Item Requisition";
+    Layout = "~/Views/Shared/_LayoutAdminTransaction.cshtml";
+    var db = Database.Open("dbConnect");
+    var view = db.Query("SELECT * FROM tblProjReqD,tblProjectHeader,tblItemReqHeader,tblEmployee,tblSection,tblService " +
+        "WHERE strProjReqDId=strProjHReqId AND strProjHReqId=strItemReqHProjHId AND strProjHSecId=strSecId AND strItemReqHEmpId=strEmpId AND strProjReqDServId=strServId");
+    var viewRequest = db.Query("SELECT * FROM tblProjReqH,tblProjReqD,tblClient,tblService,tblOffice " +
+        "WHERE strProjReqDReqHId=strProjReqHId AND strProjReqDServId=strServId AND strProjReqHClientId=strClientId AND strClientOfficeId=strOfficeId AND intProjReqDStatus=2 " +
+        "ORDER BY dtmProjReqHDateRec,strProjReqDId");
+    var viewEmp = db.Query("SELECT * FROM tblEmployee WHERE intEmpStatus=1 ORDER BY strEmpFirst");
+    var selectRequest = "SELECT * FROM tblProjReqH,tblProjReqD,tblClient,tblService,tblOffice " +
+        "WHERE strProjReqDReqHId=strProjReqHId AND strProjReqDServId=strServId AND strProjReqHClientId=strClientId AND strClientOfficeId=strOfficeId AND intProjReqDStatus=2 AND strProjReqDId=(@0) " +
+        "ORDER BY dtmProjReqHDateRec,strProjReqDId";
+    var selectRel = "SELECT * FROM tblItemReqHeader,tblItemReqDetail,tblItem,tblUnit " +
+        "WHERE strItemReqId=(@0) AND strItemReqId=strItemReqHId AND strItemReqDItemId=strItemId AND strItemReqDUnitId=strUnitId";
+    var selectItems = "SELECT * FROM tblProjReqD,tblProjectHeader,tblProjectDetail,tblItem,tblUnit " +
+        "WHERE strProjReqDId=strProjHReqId AND strProjHReqId=strProjDProjHId AND strProjReqDId=(@0) AND strProjDItemId=strItemId AND strProjDUnitId=strUnitId";
+    var selectItemQty = "SELECT SUM(intItemRelDQty) FROM tblProjectHeader,tblItemReqHeader,tblItemRelHeader,tblItemRelDetail " +
+        "WHERE strProjHReqId=strItemReqHProjHId AND strItemReqId=strItemRelItemReqId AND " +
+        "strItemRelId=strItemRelHId AND strProjHReqId=(@0) AND strItemRelDItemId=(@1) AND strItemRelDUnitId=(@2)";
+    var selectStockQty = "SELECT SUM(intDeliDQty) FROM tblItemDelDetail,tblItemReqDetail " +
+        "WHERE strItemReqHId=(@0) AND strItemReqDItemId=(@1) AND strItemReqDUnitId=(@2) AND strItemReqDItemId=strDeliDItemId AND strItemReqDUnitId=strDeliDUnitId";
+    var selectRelQty = "SELECT SUM(intItemRelDQty) FROM tblItemRelDetail,tblItemReqDetail " +
+        "WHERE strItemReqHId=(@0) AND strItemReqDItemId=(@1) AND strItemReqDUnitId=(@2) AND strItemReqDItemId=strItemRelDItemId AND strItemReqDUnitId=strItemRelDUnitId";
+    var count = db.QueryValue("SELECT COUNT(*) FROM tblItemReqHeader") + 1;
+    var leftPad = "SELECT CONCAT('IREQ-', LPAD((@0),4,'0'))";
+    var ireqId = db.QueryValue(leftPad, count);
+    var count1 = db.QueryValue("SELECT COUNT(*) FROM tblItemRelHeader") + 1;
+    var leftPad1 = "SELECT CONCAT('REL-', LPAD((@0),4,'0'))";
+    var relId = db.QueryValue(leftPad1, count1);
+    var procId = Request["procId"];
+    var selId = Request["selId"];
+    var qtyAvail = 0;
+    var valid = 0;
+    var validEdit = 0;
+    string[] error = new string[10];
+    string[] errorEdit = new string[10];
+    var viewItems = db.Query(selectItems, procId);
+    var viewSelReq = db.Query(selectRequest, procId);
+    var viewRel = db.Query(selectRel, selId);
+    var insertH = "INSERT INTO tblItemReqHeader VALUES(@0,@1,@2,@3)";
+    var insertD = "INSERT INTO tblItemReqDetail(strItemReqHId,strItemReqDItemId,strItemReqDUnitId,intItemReqDQty) VALUES(@0,@1,@2,@3)";
+    var insertH1 = "INSERT INTO tblItemRelHeader VALUES(@0,@1,@2,@3)";
+    var insertD1 = "INSERT INTO tblItemRelDetail(strItemRelHId,strItemRelDItemId,strItemRelDUnitId,intItemRelDQty) VALUES(@0,@1,@2,@3)";
+    if (procId != null)
+    {
+        <script>
+            $(document).ready(function () {
+                $("#add1").modal();
+                $("#add2").modal();
+            });
+        </script>
+    }
+    if (selId != null)
+    {
+        <script>
+            $(document).ready(function () {
+                $("#views").modal();
+            });
+        </script>
+    }
+    if (IsPost)
+    {
+        if (Request.Form["submitAdd"] != null)
+        {
+            string[] itemList = Request.Form.GetValues("itemName");
+            string[] unitList = Request.Form.GetValues("unitName");
+            string[] qtyList = Request.Form.GetValues("itemQty");
+            var empReq = Request["emp"];
+            if (empReq.IsEmpty())
+            {
+                valid++;
+            }
+            if (valid == 0)
+            {
+                db.Execute(insertH, ireqId, procId, empReq, DateTime.Now.ToString());
+                for (int x = 0; x < qtyList.Length; x++)
+                {
+                    if (qtyList[x] != "")
+                    {
+                        db.Execute(insertD, ireqId, itemList[x], unitList[x], qtyList[x]);
+                    }
+                }
+                <script>
+                    $(document).ready(function () {
+                        $("#add1").modal('hide');
+                        $("#add2").modal('hide');
+                        $("#success").modal({ backdrop: "static" });
+                        setTimeout(function () {
+                            $("#success").hide();
+                            window.location.href = "../Admin/ItemRequisition";
+                        }, 2000);
+                    });
+                </script>
+            }
+            else
+            {
+                <script>
+                    $(document).ready(function () {
+                        $("#add1").modal();
+                        $("#add2").modal();
+                    });
+                </script>
+            }
+        }
+        if (Request.Form["submitRelease"] != null)
+        {
+            var remp = Request["remp"];
+            string[] rItemName = Request.Form.GetValues("rItemName");
+            string[] rUnitName = Request.Form.GetValues("rUnitName");
+            string[] ritemQty = Request.Form.GetValues("ritemQty");
+            string[] rStock = Request.Form.GetValues("rStock");
+            /*for (int x = 0; x < ritemQty.Length; x++)
+            {
+                if (ritemQty[x] > rStock[x])
+                {
+                    validEdit++; errorEdit[0] = "Inventory stock not available";
+                }
+            }*/
+            if (validEdit == 0)
+            {
+                db.Execute(insertH1, relId, selId, remp, DateTime.Now);
+                for (int x = 0; x < ritemQty.Length; x++)
+                {
+                    if (ritemQty[x] != "")
+                    {
+                        db.Execute(insertD1, relId, rItemName[x], rUnitName[x], ritemQty[x]);
+                    }
+                }
+                <script>
+                    $(document).ready(function () {
+                        $("#views").modal('hide');
+                        $("#success").modal({ backdrop: "static" });
+                        setTimeout(function () {
+                            $("#success").hide();
+                            window.location.href = "../Admin/ItemRequisition";
+                        }, 2000);
+                    });
+                </script>
+            }
+            else
+            {
+                <script>
+                    $(document).ready(function () {
+                        $("#views").modal();
+                    });
+                </script>
+            }
+        }
+    }
+    <script>
+        $(document).ready(function () {
+            $('#tableData').DataTable();
+            $('#tableDataSelect').DataTable();
+            $('#tableItems').DataTable();
+            $('#tableRelItems').DataTable();
+        });
+        function validate(event, idx) {
+            var char = String.fromCharCode(event.which);
+            var patt = /[`~!#$%^&*_+={}|:";@@<>?\\//\[\]]/;
+            var res = patt.test(char);
+            if (res) {
+                $('#' + idx + '').popover('show');
+                return false;
+            }
+            else {
+                $('#' + idx + '').popover('hide');
+            }
+        }
+        function contact(event, idx) {
+            var char = String.fromCharCode(event.which);
+            var patt = /[A-Za-z`~!#$%^&*()_+={}|:";@@'<>,.?\\//\[\]]/;
+            var res = patt.test(char);
+            if (res) {
+                $('#' + idx + '').popover('show');
+                return false;
+            }
+            else {
+                $('#' + idx + '').popover('hide');
+            }
+        }
+        $(document).on("click", "#edit", function () {
+            var editId = $(this).data("id");
+            window.location.href = "../Admin/ItemRequisition?editId=" + editId;
+        });
+        $(document).on("click", "#proceed", function () {
+            var procId = $(this).data("id");
+            window.location.href = "../Admin/ItemRequisition?procId=" + procId;
+        });
+        $(document).on("click", "#view", function () {
+            var selId = $(this).data("id");
+            window.location.href = "../Admin/ItemRequisition?selId=" + selId;
+        });
+    </script>
+}
+<div class="navbar navbar-default">
+    <div class="navbar-header">
+        <div class="navbar-brand">Inventory</div>
+        <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#myNavbar1">
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+        </button>
+    </div>
+    <div class="collapse navbar-collapse" id="myNavbar1">
+        <ul class="nav navbar-nav navbar-right">
+            <li class="active"><a href="../Admin/ItemRequisition">Item Request</a></li>
+            <li><a href="../Admin/PurchaseRequisition">Purchase Request</a></li>
+        </ul>
+    </div>
+</div>
+<hr />
+<div class="row">
+    <div class="col-md-12" style="margin-bottom: 1%">
+        <div class="col-md-2"><button class="btn btn-default" data-toggle="modal" data-target="#add1">Add Item Request</button></div>
+    </div>
+    <div class="col-md-12">
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <h1 class="panel-title">Requested Items</h1>
+            </div>
+            <div class="panel-body">
+                <div class="table-responsive">
+                    <table id="tableData" class="table dataTable no-footer" role="grid">
+                        <thead>
+                            <tr>
+                                <th>Service and Project</th>
+                                <th>Section</th>
+                                <th>Requested by</th>
+                                <th>Date Requested</th>
+                                <th>Priority</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @{
+                                foreach(var x in view)
+                                {
+                                    <tr>
+                                        <td>@x.strServName - @x.strProjReqDDesc</td>
+                                        <td>@x.strSecName</td>
+                                        <td>@x.strEmpFirst @x.strEmpLast</td>
+                                        <td>@x.dtmItemReqHDate.ToString()</td>
+                                        <td>@x.intProjHPriority</td>
+                                        <td>
+                                            <button class="btn btn-success" id="view" name="view" data-id="@x.strItemReqId"><span class="glyphicon glyphicon-eye-open"></span></button>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="modal fade" id="add1" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-md" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title">Add Request</h4>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="table-responsive">
+                            <table id="tableDataSelect" class="table dataTable no-footer" role="grid">
+                                <thead>
+                                    <tr>
+                                        <th>Office</th>
+                                        <th>Service</th>
+                                        <th>Description</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @{
+                                        foreach (var x in viewRequest)
+                                        {
+                                            <tr>
+                                                <td>@x.strOfficeName</td>
+                                                <td>@x.strServName</td>
+                                                <td>@x.strProjReqDDesc</td>
+                                                <td>
+                                                    <button class="btn btn-success" name="proceed" id="proceed" data-id="@x.strProjReqDId">Proceed</button>
+                                                </td>
+                                            </tr>
+                                        }
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="modal fade" id="add2" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-md" role="document">
+        <form action="" method="post">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    <h4 class="modal-title">Request Item</h4>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-12">
+                            @{
+                                if (valid != 0)
+                                {
+                                    <div class="alert alert-danger" role="alert">
+                                        <ul>
+                                            @{
+                                                for (int x = 0; x < error.Length; x++)
+                                                {
+                                                    if (error[x] != null)
+                                                    {
+                                                        <li>@error[x]</li>
+                                                    }
+                                                }
+                                            }
+                                        </ul>
+                                    </div>
+                                                }
+                            }
+                            @{
+                                foreach (var x in viewSelReq)
+                                {
+                                    <label>Project Requested by: </label><span> @x.strClientFirst @x.strClientMiddle @x.strClientLast</span><br />
+                                    <label>Project Service: </label><span> @x.strServName</span><br />
+                                    <label>Project Description: </label><span> @x.strProjReqDDesc</span><br />
+                                }
+                            }
+                            <label>Items requested by:</label>
+                            <select name="emp" id="emp" class="btn btn-default dropdown-toggle" selected="">
+                                @{
+                                    foreach (var x in viewEmp)
+                                    {
+                                        <option value="@x.strEmpId">@x.strEmpFirst @x.strEmpMiddle @x.strEmpLast</option>
+                                    }
+                                }
+                            </select><br /><br />
+                            <div class="table-responsive">
+                                <table id="tableItems" class="table dataTable no-footer" role="grid">
+                                    <thead>
+                                        <tr>
+                                            <th>Item</th>
+                                            <th>Unit</th>
+                                            <th>Quantity</th>
+                                            <th>Quantity on Request</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @{
+                                            foreach (var x in viewItems)
+                                            {
+                                                var curQty = db.QueryValue(selectItemQty, procId, x.strItemId, x.strUnitId);
+                                                if (!DBNull.Value.Equals(curQty))
+                                                {
+                                                    curQty = Convert.ToInt32(curQty);
+                                                }
+                                                else
+                                                {
+                                                    curQty = 0;
+                                                }
+                                                qtyAvail = (int)x.intProjDQty - (int)curQty;
+                                                <tr>
+                                                    <td><input class="form-control hiddens" name="itemName" id="itemName" value="@x.strItemId"/>@x.strItemName</td>
+                                                    <td><input class="form-control hiddens" name="unitName" id="unitName" value="@x.strUnitId" />@x.strUnitName</td>
+                                                    <td><input type="number" class="form-control" name="itemQty" id="itemQty" min="1" max="@qtyAvail" step="1" /></td>
+                                                    <td>@qtyAvail</td>
+                                                </tr>
+                                            }
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <label style="float:left">All labels with "*" are required</label>
+                    <input name="submitAdd" type="submit" class="btn btn-default" value="Submit" />
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+<div class="modal fade" id="views" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-md" role="document">
+        <form action="" method="post">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    <h4 class="modal-title">Release Item</h4>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-12">
+                            @{
+                                if (validEdit != 0)
+                                {
+                                    <div class="alert alert-danger" role="alert">
+                                        <ul>
+                                            @{
+                                                for (int x = 0; x < errorEdit.Length; x++)
+                                                {
+                                                    if (errorEdit[x] != null)
+                                                    {
+                                                        <li>@errorEdit[x]</li>
+                                                    }
+                                                }
+                                            }
+                                        </ul>
+                                    </div>
+                                                }
+                            }
+                            <label>Items released by:</label>
+                            <select name="remp" id="remp" class="btn btn-default dropdown-toggle" selected="">
+                                @{
+                                    foreach (var x in viewEmp)
+                                    {
+                                        <option value="@x.strEmpId">@x.strEmpFirst @x.strEmpMiddle @x.strEmpLast</option>
+                                    }
+                                }
+                            </select><br /><br />
+                            <div class="table-responsive">
+                                <table id="tableRelItems" class="table dataTable no-footer" role="grid">
+                                    <thead>
+                                        <tr>
+                                            <th>Item</th>
+                                            <th>Unit</th>
+                                            <th>Quantity</th>
+                                            <th>Quantity Requested</th>
+                                            <th>Quantity on Stock</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @{
+                                            foreach(var x in viewRel)
+                                            {
+                                                var stockQty = db.QueryValue(selectStockQty, selId, x.strItemReqDItemId, x.strItemReqDUnitId);
+                                                var relQty = db.QueryValue(selectRelQty, selId, x.strItemReqDItemId, x.strItemReqDUnitId);
+                                                var qtyAvailable = 0;
+                                                var totalQty = 0;
+                                                if (!DBNull.Value.Equals(stockQty))
+                                                {
+                                                    stockQty = Convert.ToInt32(stockQty);
+                                                }
+                                                else
+                                                {
+                                                    stockQty = 0;
+                                                }
+                                                if (!DBNull.Value.Equals(relQty))
+                                                {
+                                                    relQty = Convert.ToInt32(relQty);
+                                                }
+                                                else
+                                                {
+                                                    relQty = 0;
+                                                }
+                                                totalQty = Convert.ToInt32(stockQty) - Convert.ToInt32(relQty);
+                                                qtyAvailable = x.intItemReqDQty - relQty;
+                                                <tr>
+                                                    <td><input class="hiddens" id="rItemName" name="rItemName" value="@x.strItemId"/>@x.strItemName</td>
+                                                    <td><input class="hiddens" id="rUnitName" name="rUnitName" value="@x.strUnitId" />@x.strUnitName</td>
+                                                    <td><input type="number" class="form-control" name="ritemQty" id="ritemQty" min="1" max="@totalQty" step="1" /></td>
+                                                    <td>@qtyAvailable</td>
+                                                    <td><input class="hiddens" id="rStock" name="rStock" value="@stockQty"/>@totalQty</td>
+                                                </tr>
+                                            }
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <label style="float:left">All labels with "*" are required</label>
+                    <input name="submitRelease" type="submit" class="btn btn-default" value="Submit" />
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+<!--SUCCESS-->
+<div class="modal fade" id="success" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-sm" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title"><span class="success">SUCCESS</span></h4>
+            </div>
+            <div class="modal-body">
+                <p>SUCCESS!</p>
+            </div>
+        </div>
+    </div>
+</div>

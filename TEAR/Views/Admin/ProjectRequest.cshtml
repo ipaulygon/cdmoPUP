@@ -1,0 +1,712 @@
+﻿@using WebMatrix.Data;
+@{
+    ViewBag.Title = "Project Request";
+    Layout = "~/Views/Shared/_LayoutAdminTransaction.cshtml";
+    var db = Database.Open("dbConnect");
+    var view = db.Query("SELECT * FROM tblProjReqH,tblClient WHERE strProjReqHClientId=strClientId");
+    var viewOffice = db.Query("SELECT * FROM tblOffice ORDER BY strOfficeName");
+    var viewServ = db.Query("SELECT * FROM tblService ORDER BY strServName");
+    var viewClient = db.Query("SELECT * FROM tblClient ORDER BY strClientLast");
+    var selectRequest = "SELECT * FROM tblProjReqH,tblClient WHERE strProjReqHClientId=strClientId AND strProjReqHId=(@0)";
+    var selectDescs = "SELECT * FROM tblProjReqD WHERE strProjReqDReqHId=(@0) ORDER BY strProjReqDId";
+    var count = db.QueryValue("SELECT COUNT(*) FROM tblProjReqH") + 1;
+    var leftPad = "SELECT CONCAT('PROJR-', LPAD((@0),4,'0'))";
+    var projrId = db.QueryValue(leftPad, count);
+    var count1 = db.QueryValue("SELECT COUNT(*) FROM tblClient") + 1;
+    var leftPad1 = "SELECT CONCAT('CLIENT-', LPAD((@0),4,'0'))";
+    var clientId = db.QueryValue(leftPad1, count1);
+    var viewId = Request["viewId"];
+    var editId = Request["editId"];
+    var cFirst = "";
+    var cMiddle = "";
+    var cLast = "";
+    var cContact = "";
+    var cType = 0;
+    var cOffice = "";
+    var projrDesc = "";
+    var cCheck = "";
+    string[] error = new string[10];
+    string[] errorEdit = new string[5];
+    var valid = 0;
+    var validEdit = 0;
+    var viewDescs = db.Query(selectDescs, editId);
+    var viewRequest = db.Query(selectRequest, editId);
+    if (viewId != null)
+    {
+        <script>
+            $(document).ready(function () {
+                $("#views").modal();
+            });
+        </script>
+    }
+    if (editId != null)
+    {
+        <script>
+            $(document).ready(function () {
+                $("#edits").modal();
+            });
+        </script>
+    }
+    <script>
+        var servId = [];
+        var servName = [];
+    </script>
+    foreach (var x in viewServ)
+    {
+        <script>
+            servId.push("@x.strServId");
+            servName.push("@x.strServName");
+        </script>
+    }
+    if (IsPost)
+    {
+        if (Request.Form["submitAdd"] != null)
+        {
+            cFirst = Request["cFirst"].Trim();
+            cMiddle = Request["cMiddle"].Trim();
+            cLast = Request["cLast"].Trim();
+            cContact = Request["cContact"].Trim();
+            cType = Convert.ToInt32(Request["cType"]);
+            cOffice = Request["cOffice"];
+            projrDesc = Request["projrDesc"];
+            var projServs = Request.Form.GetValues("projServ");
+            var projDescs = Request.Form.GetValues("projDesc");
+            if (cFirst.IsEmpty())
+            {
+                valid++; error[0] = "First Name is required";
+            }
+            if (cLast.IsEmpty())
+            {
+                valid++; error[1] = "Last Name is required";
+            }
+            if (cContact.IsEmpty())
+            {
+                valid++; error[2] = "Contact is required";
+            }
+            if (cType <= 0 || cType > 3)
+            {
+                valid++; error[3] = "Client type is required";
+            }
+            if (cOffice.IsEmpty())
+            {
+                valid++; error[4] = "Office is required";
+            }
+            if (projrDesc.IsEmpty())
+            {
+                valid++; error[5] = "Project Description is required";
+            }
+            if (projServs == null)
+            {
+                valid++; error[6] = "At least one Service is required";
+            }
+            if (projDescs == null)
+            {
+                valid++; error[7] = "At least one Request is required";
+            }
+            if (valid == 0)
+            {
+                foreach (var x in viewClient)
+                {
+                    var fullQuery = x.strClientFirst + x.strClientMiddle + x.strClientLast;
+                    var fullGet = cFirst + cMiddle + cLast;
+                    if (fullQuery.Equals(fullGet))
+                    {
+                        cCheck = x.strClientId;
+                    }
+                }
+                if (cCheck != "")
+                {
+                    var update = "UPDATE tblClient SET strClientContact=(@0),intClientType=(@1),strClientOfficeId=(@2) WHERE strClientId=(@3)";
+                    db.Execute(update, cContact, cType, cOffice, cCheck);
+                    clientId = cCheck;
+                }
+                else
+                {
+                    var insertC = "INSERT INTO tblClient VALUES(@0,@1,@2,@3,@4,@5,@6)";
+                    db.Execute(insertC, clientId, cFirst, cMiddle, cLast, cContact, cType, cOffice);
+                }
+                var insertH = "INSERT INTO tblProjReqH VALUES(@0,@1,@2,@3)";
+                db.Execute(insertH, projrId, projrDesc, clientId, DateTime.Now);
+                var insertD = "INSERT INTO tblProjReqD VALUES(@0,@1,@2,@3,@4)";
+                for (int x = 0; x < projServs.Length; x++)
+                {
+                    var count2 = db.QueryValue("SELECT COUNT(*) FROM tblProjReqD") + 1;
+                    var leftPad2 = "SELECT CONCAT('REQ-', LPAD((@0),4,'0'))";
+                    var reqId = db.QueryValue(leftPad2, count2);
+                    db.Execute(insertD, reqId, projrId, projServs[x], projDescs[x], 1);
+                }
+                <script>
+                    $(document).ready(function () {
+                        $("#views").modal('hide');
+                        $("#edits").modal('hide');
+                        $("#success").modal({ backdrop: "static" });
+                        setTimeout(function () {
+                            $("#success").hide();
+                            window.location.href = "../Admin/ProjectRequest";
+                        }, 2000);
+                    });
+                </script>
+            }
+            else
+            {
+                <script>
+                    $(document).ready(function () {
+                        $("#views").modal('hide');
+                        $("#edits").modal('hide');
+                        $("#add1").modal();
+                    });
+                </script>
+            }
+        }
+        if (Request.Form["submitEdit"] != null)
+        {
+            cFirst = Request["ecFirst"].Trim();
+            cMiddle = Request["ecMiddle"].Trim();
+            cLast = Request["ecLast"].Trim();
+            cContact = Request["ecContact"].Trim();
+            cType = Convert.ToInt32(Request["ecType"]);
+            cOffice = Request["ecOffice"];
+            projrDesc = Request["eprojrDesc"];
+            var projServs = Request.Form.GetValues("eprojServ");
+            var projDescs = Request.Form.GetValues("eprojDesc");
+            if (cFirst.IsEmpty())
+            {
+                validEdit++; errorEdit[0] = "First Name is required";
+            }
+            if (cLast.IsEmpty())
+            {
+                validEdit++; errorEdit[1] = "Last Name is required";
+            }
+            if (cContact.IsEmpty())
+            {
+                validEdit++; errorEdit[2] = "Contact is required";
+            }
+            if (cType <= 0 || cType > 3)
+            {
+                validEdit++; errorEdit[3] = "Client type is required";
+            }
+            if (cOffice.IsEmpty())
+            {
+                validEdit++; errorEdit[4] = "Office is required";
+            }
+            if (projrDesc.IsEmpty())
+            {
+                validEdit++; errorEdit[5] = "Project Description is required";
+            }
+            if (projServs == null)
+            {
+                validEdit++; errorEdit[6] = "At least one Service is required";
+            }
+            if (projDescs == null)
+            {
+                validEdit++; errorEdit[7] = "At least one Request is required";
+            }
+            if (validEdit == 0)
+            {
+                foreach (var x in viewClient)
+                {
+                    var fullQuery = x.strClientFirst + x.strClientMiddle + x.strClientLast;
+                    var fullGet = cFirst + cMiddle + cLast;
+                    if (fullQuery.Equals(fullGet))
+                    {
+                        cCheck = x.strClientId;
+                    }
+                }
+                if (cCheck != "")
+                {
+                    var updateC = "UPDATE tblClient SET strClientContact=(@0),intClientType=(@1),strClientOfficeId=(@2) WHERE strClientId=(@3)";
+                    db.Execute(updateC, cContact, cType, cOffice, cCheck);
+                    clientId = cCheck;
+                }
+                else
+                {
+                    var insertC = "INSERT INTO tblClient VALUES(@0,@1,@2,@3,@4,@5,@6)";
+                    db.Execute(insertC, clientId, cFirst, cMiddle, cLast, cContact, cType, cOffice);
+                }
+                var updateH = "UPDATE tblProjReqH SET strProjReqHDesc=(@0),strProjReqHClientId=(@1) WHERE strProjReqHId=(@2)";
+                db.Execute(updateH, projrDesc, clientId, editId);
+                var updateD = "UPDATE tblProjReqD SET strProjReqDServId=(@0),strProjReqDDesc=(@1) WHERE strProjReqDId=(@2)";
+                var dCount = 0;
+                foreach(var x in viewDescs)
+                {
+                    db.Execute(updateD, projServs[dCount], projDescs[dCount], x.strProjReqDId);
+                    dCount++;
+                }
+                <script>
+                    $(document).ready(function () {
+                        $("#edits").modal('hide');
+                        $("#success").modal({ backdrop: "static" });
+                        setTimeout(function () {
+                            $("#success").hide();
+                            window.location.href = "../Admin/ProjectRequest";
+                        }, 2000);
+                    });
+                </script>
+            }
+            else
+            {
+                <script>
+                    $(document).ready(function () {
+                        $("#edits").modal();
+                    });
+                </script>
+            }
+        }
+    }
+    <script>
+        $(document).ready(function () {
+            $('#tableData').DataTable();
+        });
+        function validate(event, idx) {
+            var char = String.fromCharCode(event.which);
+            var patt = /[`~!#$%^&*_+={}|:";@@<>?\\//\[\]]/;
+            var res = patt.test(char);
+            if (res) {
+                $('#' + idx + '').popover('show');
+                return false;
+            }
+            else {
+                $('#' + idx + '').popover('hide');
+            }
+        }
+        function contact(event, idx) {
+            var char = String.fromCharCode(event.which);
+            var patt = /[A-Za-z`~!#$%^&*()_+={}|:";@@'<>,.?\\//\[\]]/;
+            var res = patt.test(char);
+            if (res) {
+                $('#' + idx + '').popover('show');
+                return false;
+            }
+            else {
+                $('#' + idx + '').popover('hide');
+            }
+        }
+        $(document).on("click", "#view", function () {
+            var viewId = $(this).data("id");
+            window.location.href = "../Admin/ProjectRequest?viewId=" + viewId;
+        });
+        $(document).on("click", "#edit", function () {
+            var editId = $(this).data("id");
+            window.location.href = "../Admin/ProjectRequest?editId=" + editId;
+        });
+        function addReq() {
+            var table = document.getElementById("tableRequest");
+            var x = table.rows.length;
+            var row = table.insertRow(x);
+            var cell1 = row.insertCell(0);
+            var cell2 = row.insertCell(1);
+            var cell3 = row.insertCell(2);
+            cell1.innerHTML = '<select class="btn btn-default dropdown-toggle"></select>';
+            cell2.innerHTML = '<input type="text" class="form-control" placeholder="Description" onkeypress="return validate(event,this.id)" data-toggle="popover"/>';
+            cell3.innerHTML = '<a href="#" type="button" class="btn btn-danger" onclick="remove(this)"><span class="glyphicon glyphicon-remove-sign"></span></a>';
+            table.rows[x].cells[0].children[0].setAttribute("id", "projServ");
+            table.rows[x].cells[0].children[0].setAttribute("name", "projServ");
+            table.rows[x].cells[1].children[0].setAttribute("id", "projDesc");
+            table.rows[x].cells[1].children[0].setAttribute("name", "projDesc");
+            for (var y = 0; y < servId.length; y++) {
+                var option = document.createElement("option");
+                option.setAttribute("value", servId[y]);
+                option.text = servName[y];
+                table.rows[x].cells[0].children[0].appendChild(option);
+            }
+        }
+        function remove(row) {
+            var i = row.parentNode.parentNode.rowIndex;
+            document.getElementById("tableRequest").deleteRow(i);
+        }
+        function eaddReq() {
+            var table = document.getElementById("etableRequest");
+            var x = table.rows.length;
+            var row = table.insertRow(x);
+            var cell1 = row.insertCell(0);
+            var cell2 = row.insertCell(1);
+            var cell3 = row.insertCell(2);
+            cell1.innerHTML = '<select class="btn btn-default dropdown-toggle"></select>';
+            cell2.innerHTML = '<input type="text" class="form-control" placeholder="Description" onkeypress="return validate(event,this.id)" data-toggle="popover"/>';
+            cell3.innerHTML = '<a href="#" type="button" class="btn btn-danger" onclick="eremove(this)"><span class="glyphicon glyphicon-remove-sign"></span></a>';
+            table.rows[x].cells[0].children[0].setAttribute("id", "eprojServ");
+            table.rows[x].cells[0].children[0].setAttribute("name", "eprojServ");
+            table.rows[x].cells[1].children[0].setAttribute("id", "eprojDesc");
+            table.rows[x].cells[1].children[0].setAttribute("name", "eprojDesc");
+            for (var y = 0; y < servId.length; y++) {
+                var option = document.createElement("option");
+                option.setAttribute("value", servId[y]);
+                option.text = servName[y];
+                table.rows[x].cells[0].children[0].appendChild(option);
+            }
+        }
+        function eremove(row) {
+            var i = row.parentNode.parentNode.rowIndex;
+            document.getElementById("etableRequest").deleteRow(i);
+        }
+    </script>
+}
+<div class="navbar navbar-default">
+    <div class="navbar-header">
+        <div class="navbar-brand">Project Design</div>
+        <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#myNavbar1">
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+        </button>
+    </div>
+    <div class="collapse navbar-collapse" id="myNavbar1">
+        <ul class="nav navbar-nav navbar-right">
+            <li class="active"><a href="../Admin/ProjectRequest">Project Requests</a></li>
+            <li><a href="../Admin/Project">Projects</a></li>
+        </ul>
+    </div>
+</div>
+<hr />
+<div class="row">
+    <div class="col-md-12" style="margin-bottom: 1%">
+        <div class="col-md-2"><button class="btn btn-default" data-toggle="modal" data-target="#add1">Add Request</button></div>
+    </div>
+    <div class="col-md-12">
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <h1 class="panel-title">Project Requests</h1>
+            </div>
+            <div class="panel-body">
+                <div class="table-responsive">
+                    <table id="tableData" class="table dataTable no-footer" role="grid">
+                        <thead>
+                            <tr>
+                                <th>Project Request Id</th>
+                                <th>Description</th>
+                                <th>Client Name</th>
+                                <th>Date Received</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @{
+                                foreach (var x in view)
+                                {
+                                    <tr>
+                                        <td>@x.strProjReqHId</td>
+                                        <td>@x.strProjReqHDesc</td>
+                                        <td>@x.strClientFirst @x.strClientMiddle @x.strClientLast</td>
+                                        <td>@x.dtmProjReqHDateRec.ToString()</td>
+                                        <td>
+                                            <!--<button class="btn btn-primary" id="view" name="view" data-id="">View</button>-->
+                                            <button class="btn btn-success" id="edit" name="edit" data-id="@x.strProjReqHId">Edit</button>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!--ADD CLIENT-->
+<div class="modal fade" id="add1" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg" role="document">
+        <form action="" method="post">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    <h4 class="modal-title">Add Request</h4>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-12">
+                            <ul class="nav nav-tabs" role="tablist">
+                                <li class="active"><a href="#client" role="tab" data-toggle="tab">Client Information</a></li>
+                                <li><a href="#project" role="tab" data-toggle="tab">Project Request</a></li>
+                            </ul>
+                            <div class="tab-content">
+                                <div role="tabpanel" class="tab-pane fade in active" id="client">
+                                    <br /><br />
+                                    @{
+                                        if (valid != 0)
+                                        {
+                                            <div class="alert alert-danger" role="alert">
+                                                <ul>
+                                                    @{
+                                                        for (int x = 0; x < error.Length; x++)
+                                                        {
+                                                            if (error[x] != null)
+                                                            {
+                                                                <li>@error[x]</li>
+                                                            }
+                                                        }
+                                                    }
+                                                </ul>
+                                            </div>
+                                                        }
+                                    }
+                                    <div class="col-md-4">
+                                        <label>First Name:*</label><br />
+                                        <input type="text" class="form-control" id="cFirst" name="cFirst" placeholder="First Name" onkeypress="return validate(event, this.id)" data-toggle="popover" value="@cFirst" />
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label>Middle Name:</label><br />
+                                        <input type="text" class="form-control" id="cMiddle" name="cMiddle" placeholder="Middle Name" onkeypress="return validate(event, this.id)" data-toggle="popover" value="@cMiddle" />
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label>Last Name:*</label><br />
+                                        <input type="text" class="form-control" id="cLast" name="cLast" placeholder="Last Name" onkeypress="return validate(event, this.id)" data-toggle="popover" value="@cLast" />
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label>Contact Number:*</label><br />
+                                        <input type="text" class="form-control" id="cContact" name="cContact" placeholder="Contact Number" onkeypress="return contact(event, this.id)" data-content="Please input a valid contact number i.e(0905-****-***)" data-toggle="popover" value="@cContact" />
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label>Client Type:*</label><br />
+                                        <div class="radio">
+                                            <label><input type="radio" name="cType" id="1" value="1" />Student</label>
+                                            <label><input type="radio" name="cType" id="2" value="2" />Administrative Staff</label>
+                                            <label><input type="radio" name="cType" id="3" value="3" />Faculty</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-12">
+                                        <label>Office:*</label><br />
+                                        <select name="cOffice" id="cOffice" class="btn btn-default dropdown-toggle" selected="">
+                                            @{
+                                                foreach (var x in viewOffice)
+                                                {
+                                                    <option value="@x.strOfficeId">@x.strOfficeName</option>
+                                                }
+                                            }
+                                        </select><br /><br />
+                                    </div>
+                                    <script>
+                                        document.getElementById("@cType").checked = true;
+                                        document.getElementById("cOffice").value = "@cOffice";
+                                    </script>
+                                </div>
+                                <div role="tabpanel" class="tab-pane fade in" id="project">
+                                    <br /><br />
+                                    @{
+                                        if (valid != 0)
+                                        {
+                                            <div class="alert alert-danger" role="alert">
+                                                <ul>
+                                                    @{
+                                                        for (int x = 0; x < error.Length; x++)
+                                                        {
+                                                            if (error[x] != null)
+                                                            {
+                                                                <li>@error[x]</li>
+                                                            }
+                                                        }
+                                                    }
+                                                </ul>
+                                            </div>
+                                                        }
+                                    }
+                                    <label>Project Request Id: @projrId</label><br />
+                                    <div class="col-md-12">
+                                        <label>Description:*</label><br />
+                                        <textarea class="form-control" id="projrDesc" name="projrDesc" placeholder="Description" onkeypress="return validate(event,this.id)" data-toggle="popover">@projrDesc</textarea>
+                                    </div>
+                                    <div class="col-md-12">
+                                        <a href="#" type="button" class="btn btn-warning" style="float:right" id="addReq" name="addReq" onclick="addReq()"><span class="glyphicon glyphicon-plus-sign"></span></a>
+                                        <div class="table-responsive">
+                                            <table id="tableRequest" class="table dataTable no-footer" role="grid">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Service Request</th>
+                                                        <th>Description</th>
+                                                        <th>Action</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody></tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <label style="float:left">All labels with "*" are required</label>
+                    <input name="submitAdd" type="submit" class="btn btn-default" value="Submit" />
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+<!--EDIT CLIENT-->
+<div class="modal fade" id="edits" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg" role="document">
+        <form action="" method="post">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    <h4 class="modal-title">Edit Request</h4>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-12">
+                            <ul class="nav nav-tabs" role="tablist">
+                                <li class="active"><a href="#eclient" role="tab" data-toggle="tab">Client Information</a></li>
+                                <li><a href="#eproject" role="tab" data-toggle="tab">Project Request</a></li>
+                            </ul>
+                            <div class="tab-content">
+                                <div role="tabpanel" class="tab-pane fade in active" id="eclient">
+                                    <br /><br />
+                                    @{
+                                        if (validEdit != 0)
+                                        {
+                                            <div class="alert alert-danger" role="alert">
+                                                <ul>
+                                                    @{
+                                                        for (int x = 0; x < errorEdit.Length; x++)
+                                                        {
+                                                            if (errorEdit[x] != null)
+                                                            {
+                                                                <li>@errorEdit[x]</li>
+                                                            }
+                                                        }
+                                                    }
+                                                </ul>
+                                            </div>
+                                                        }
+                                    }
+                                    @{
+                                        foreach (var x in viewRequest)
+                                        {
+                                            <div class="col-md-4">
+                                                <label>First Name:*</label><br />
+                                                <input type="text" class="form-control" id="ecFirst" name="ecFirst" placeholder="First Name" onkeypress="return validate(event, this.id)" data-toggle="popover" value="@x.strClientFirst" />
+                                            </div>
+                                            <div class="col-md-4">
+                                                <label>Middle Name:</label><br />
+                                                <input type="text" class="form-control" id="ecMiddle" name="ecMiddle" placeholder="Middle Name" onkeypress="return validate(event, this.id)" data-toggle="popover" value="@x.strClientMiddle" />
+                                            </div>
+                                            <div class="col-md-4">
+                                                <label>Last Name:*</label><br />
+                                                <input type="text" class="form-control" id="ecLast" name="ecLast" placeholder="Last Name" onkeypress="return validate(event, this.id)" data-toggle="popover" value="@x.strClientLast" />
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label>Contact Number:*</label><br />
+                                                <input type="text" class="form-control" id="ecContact" name="ecContact" placeholder="Contact Number" onkeypress="return contact(event, this.id)" data-content="Please input a valid contact number i.e(0905-****-***)" data-toggle="popover" value="@x.strClientContact" />
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label>Client Type:*</label><br />
+                                                <div class="radio">
+                                                    <label><input type="radio" name="ecType" id="e1" value="1" />Student</label>
+                                                    <label><input type="radio" name="ecType" id="e2" value="2" />Administrative Staff</label>
+                                                    <label><input type="radio" name="ecType" id="e3" value="3" />Faculty</label>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-12">
+                                                <label>Office:*</label><br />
+                                                <select name="ecOffice" id="ecOffice" class="btn btn-default dropdown-toggle" selected="">
+                                                    @{
+                                                        foreach (var y in viewOffice)
+                                                        {
+                                                            <option value="@y.strOfficeId">@y.strOfficeName</option>
+                                                        }
+                                                    }
+                                                </select><br /><br />
+                                            </div>
+                                            <script>
+                                                document.getElementById("e"+"@x.intClientType").checked = true;
+                                                document.getElementById("ecOffice").value = "@x.strClientOfficeId";
+                                            </script>
+                                                        }
+                                    }
+                                </div>
+                                <div role="tabpanel" class="tab-pane fade in" id="eproject">
+                                    <br /><br />
+                                    @{
+                                        if (valid != 0)
+                                        {
+                                            <div class="alert alert-danger" role="alert">
+                                                <ul>
+                                                    @{
+                                                        for (int x = 0; x < error.Length; x++)
+                                                        {
+                                                            if (error[x] != null)
+                                                            {
+                                                                <li>@error[x]</li>
+                                                            }
+                                                        }
+                                                    }
+                                                </ul>
+                                            </div>
+                                                        }
+                                    }
+                                    @{
+                                        foreach (var x in viewRequest)
+                                        {
+                                            <label>Project Request Id: @x.strProjReqHId</label><br />
+                                            <div class="col-md-12">
+                                                <label>Description:*</label><br />
+                                                <textarea class="form-control" id="eprojrDesc" name="eprojrDesc" placeholder="Description" onkeypress="return validate(event,this.id)" data-toggle="popover">@x.strProjReqHDesc</textarea>
+                                            </div>
+                                            <div class="col-md-12">
+                                                <!--<a href="#" type="button" class="btn btn-warning" style="float:right" id="eaddReq" name="eaddReq" onclick="eaddReq()"><span class="glyphicon glyphicon-plus-sign"></span></a>-->
+                                                <div class="table-responsive">
+                                                    <table id="etableRequest" class="table dataTable no-footer" role="grid">
+                                                        <thead>
+                                                            <tr>
+                                                                <th>Service Request</th>
+                                                                <th>Description</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody></tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        }
+                                        foreach(var x in viewDescs)
+                                        {
+                                            <script>
+                                                var table = document.getElementById("etableRequest");
+                                                var x = table.rows.length;
+                                                var row = table.insertRow(x);
+                                                var cell1 = row.insertCell(0);
+                                                var cell2 = row.insertCell(1);
+                                                //var cell3 = row.insertCell(2);
+                                                cell1.innerHTML = '<select class="btn btn-default dropdown-toggle"></select>';
+                                                cell2.innerHTML = '<input type="text" class="form-control" placeholder="Description" onkeypress="return validate(event,this.id)" data-toggle="popover"/>';
+                                                //cell3.innerHTML = '<a href="#" type="button" class="btn btn-danger" onclick="eremove(this)"><span class="glyphicon glyphicon-remove-sign"></span></a>';
+                                                table.rows[x].cells[0].children[0].setAttribute("id", "eprojServ");
+                                                table.rows[x].cells[0].children[0].setAttribute("name", "eprojServ");
+                                                table.rows[x].cells[1].children[0].setAttribute("id", "eprojDesc");
+                                                table.rows[x].cells[1].children[0].setAttribute("name", "eprojDesc");
+                                                for (var y = 0; y < servId.length; y++) {
+                                                    var option = document.createElement("option");
+                                                    option.setAttribute("value", servId[y]);
+                                                    option.text = servName[y];
+                                                    table.rows[x].cells[0].children[0].appendChild(option);
+                                                }
+                                                table.rows[x].cells[0].children[0].value = "@x.strProjReqDServId";
+                                                table.rows[x].cells[1].children[0].value = "@x.strProjReqDDesc";
+                                            </script>
+                                        }
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <label style="float:left">All labels with "*" are required</label>
+                    <input name="submitEdit" type="submit" class="btn btn-default" value="Submit" />
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+<!--SUCCESS-->
+<div class="modal fade" id="success" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-sm" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title"><span class="success">SUCCESS</span></h4>
+            </div>
+            <div class="modal-body">
+                <p>SUCCESS!</p>
+            </div>
+        </div>
+    </div>
+</div>
+

@@ -1,0 +1,64 @@
+﻿@using WebMatrix.Data;
+@{
+    ViewBag.Title = "View Reservation";
+    Layout = "~/Views/Shared/_LayoutAdminQueries.cshtml";
+    var db = Database.Open("dbConnect");
+    var view = db.Query("SELECT * FROM tblReservation,tblAmenity,tblAmenityType,tblClient,tblOffice " + 
+        "WHERE strResAmenityId=strAmenityId AND strResClientId=strClientId AND strAmenityATId=strAmenityTId AND strClientOfficeId=strOfficeId");
+    <script>
+        $(document).ready(function () {
+            $('#tableData').DataTable();
+        });
+    </script>
+}
+<div class="navbar navbar-default">
+    <div class="navbar-header">
+        <div class="navbar-brand">Reservation View</div>
+        <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#myNavbar1">
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+        </button>
+    </div>
+</div>
+<hr />
+<div class="row">
+    <div class="col-md-12">
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <h1 class="panel-title">Reservations</h1>
+            </div>
+            <div class="panel-body">
+                <div class="table-responsive">
+                    <table id="tableData" class="table dataTable no-footer" role="grid">
+                        <thead>
+                            <tr>
+                                <th>Event</th>
+                                <th>Venue</th>
+                                <th>Venue Type</th>
+                                <th>Date and time of Reservation</th>
+                                <th>Client Name</th>
+                                <th>College</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @{
+                                foreach (var x in view)
+                                {
+                                    <tr>
+                                        <td>@x.strResEName</td>
+                                        <td>@x.strAmenityName</td>
+                                        <td>@x.strAmenityTName</td>
+                                        <td>@x.dateReservation.ToString() // @x.timeResStart.ToString() - @x.timeResEnd.ToString()</td>
+                                        <td>@x.strClientFirst @x.strClientMiddle @x.strClientLast</td>
+                                        <td>@x.strOfficeName</td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+

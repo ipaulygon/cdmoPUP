@@ -1,0 +1,81 @@
+﻿@using WebMatrix.Data;
+@{
+    ViewBag.Title = "ProjDoc";
+    Layout = "~/Views/Shared/_LayoutReport.cshtml";
+    var db = Database.Open("dbConnect");
+    var viewId = Request["viewId"];
+    var select = "SELECT * FROM tblProjReqH,tblProjReqD,tblProjectHeader,tblService,tblSection,tblClient,tblOffice " +
+        "WHERE strProjReqHId=strProjReqDReqHId AND strProjREqHClientId=strClientId AND strClientOfficeId=strOfficeId " +
+        "AND strProjReqDId=strProjHReqId AND strProjReqDServId=strServId AND strProjHSecId=strSecId AND strProjReqDId=(@0)";
+    var view = db.Query(select, viewId);
+    var selectItems = "SELECT * FROM tblProjReqD,tblProjectHeader,tblItemReqHeader,tblItemRelHeader,tblItemRelDetail,tblItem,tblUnit " +
+        "WHERE strProjReqDId=(@0) AND strProjReqDId=strProjHReqId AND strProjHReqId=strItemReqHProjHId AND strItemReqId=strItemRelItemReqId " + 
+        "AND strItemRelId=strItemRelHId AND strItemRelDItemId=strItemId AND strItemRelDUnitId=strUnitId";
+    var viewItems = db.Query(selectItems, viewId);
+}
+<div class="row">
+    <div class="col-md-12">
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <h1 class="panel-title">Project Details</h1>
+            </div>
+            <div class="panel-body">
+                <table id="tableData" class="table table-bordered">
+                    <thead>
+                        <tr>
+                            <th>Service and Request</th>
+                            <th>Client Name</th>
+                            <th>Client's Office</th>
+                            <th>Section Assigned</th>
+                            <th>Start and End Date</th>
+                            <th>Priority</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @{
+                            foreach (var x in view)
+                            {
+                                <tr>
+                                    <td>@x.strServName - @x.strProjReqDDesc</td>
+                                    <td>@x.strClientFirst @x.strClientMiddle @x.strClientLast</td>
+                                    <td>@x.strOfficeName</td>
+                                    <td>@x.strSecName</td>
+                                    <td>@x.dtmProjHStart.ToString() - @x.dtmProjHEnd.ToString()</td>
+                                    <td>@x.intProjHPriority</td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <h1 class="panel-title">Items Used</h1>
+            </div>
+            <div class="panel-body">
+                <table id="tableData" class="table table-bordered">
+                    <thead>
+                        <tr>
+                            <th>Item Name</th>
+                            <th>Unit</th>
+                            <th>Quantity</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @{
+                            foreach(var x in viewItems)
+                            {
+                                <tr>
+                                    <td>@x.strItemName</td>
+                                    <td>@x.strUnitName</td>
+                                    <td>@x.intItemRelDQty</td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

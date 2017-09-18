@@ -1,0 +1,422 @@
+﻿@using WebMatrix.Data;
+@{
+    ViewBag.Title = "Job Skills";
+    Layout = "~/Views/Shared/_LayoutAdminMaintenance.cshtml";
+    var db = Database.Open("dbConnect");
+    var view = db.Query("SELECT * FROM tblJobSkill");
+    var selectSkill = "SELECT * FROM tblJobSkill WHERE strJobSId=(@0)";
+    /* var count = db.QueryValue("SELECT COUNT(*) FROM tblJobSkill") + 1;
+     var leftPad = "SELECT CONCAT('SKILL-', LPAD((@0),4,'0'))";
+     var skillId = db.QueryValue(leftPad, count);*/
+    var viewId = Request["viewId"];
+    var editId = Request["editId"];
+    var skillId = "";
+    var skillName = "";
+    var skillDesc = "";
+    string[] error = new String[5];
+    string[] errorEdit = new String[5];
+    var valid = 0;
+    var validEdit = 0;
+    var id = db.QueryValue("SELECT strJobSId FROM tblJobSkill ORDER BY strJobSId DESC LIMIT 1");
+    char[] lastID = id.ToCharArray();
+    int ctr = 0;
+    string tempID;
+    string[] tempNew = new string[100];
+    string newID = "";
+    bool add = true;
+    for (ctr = (lastID.Length) - 1; ctr >= 0; ctr--)
+    {
+
+        tempID = lastID[ctr].ToString();
+
+        if (add)
+        {
+            if (tempID == "1" || tempID == "2" || tempID == "3" || tempID == "4" || tempID == "5" || tempID == "6" || tempID == "7" || tempID == "8" || tempID == "9" || tempID == "0")
+            {
+                if (tempID == "9")
+                {
+                    tempID = "0";
+                    tempNew[ctr] = tempID;
+
+                }
+                else
+                {
+                    tempID = (Convert.ToInt32(tempID.ToString()) + 1).ToString();
+                    tempNew[ctr] = tempID;
+                    add = false;
+                }
+            }
+            else
+            {
+                tempNew[ctr] = tempID;
+            }
+        }
+        tempNew[ctr] = tempID;
+    }
+    for (ctr = 0; ctr < lastID.Length; ctr++)
+    {
+        newID = newID + tempNew[ctr].ToString();
+    }
+    if (viewId != null)
+    {
+        <script>
+            $(document).ready(function () {
+                $("#views").modal();
+            });
+        </script>
+    }
+    if (editId != null)
+    {
+        <script>
+            $(document).ready(function () {
+                $("#edits").modal();
+            });
+        </script>
+    }
+    if (IsPost)
+    {
+        //add
+        if (Request.Form["submitAdd"] != null)
+        {
+            skillId = Request["newId"].Trim();
+            skillName = Request["skillName"].Trim();
+            skillDesc = Request["skillDesc"].Trim();
+            foreach(var x in view)
+            {
+                if (skillName == x.strJobSName)
+                {
+                    valid++; error[1] = "Skill already taken";
+                }
+                if(skillId == x.strJobSId)
+                {
+                    valid++;error[2] = "Skill Id already taken";
+                }
+            }
+            if (skillName.IsEmpty())
+            {
+                valid++; error[0] = "Skill Name is required";
+            }
+            if (skillId.IsEmpty())
+            {
+                valid++; error[3] = "Skill Id is required";
+            }
+            if (valid == 0)
+            {
+                var insert = "INSERT INTO tblJobSkill (strJobSId,strJobSName,strJobSDesc,intJobSStatus) VALUES (@0,@1,@2,@3)";
+                db.Execute(insert, skillId, skillName, skillDesc, 1);
+                <script>
+                    $(document).ready(function () {
+                        $("#views").modal('hide');
+                        $("#edits").modal('hide');
+                        $("#success").modal({ backdrop: "static" });
+                        setTimeout(function () {
+                            $("#success").hide();
+                            window.location.href = "../Admin/JobSkill";
+                        }, 2000);
+                    });
+                </script>
+            }
+            else
+            {
+                <script>
+                    $(document).ready(function () {
+                        $("#add1").modal();
+                        $("#views").modal('hide');
+                        $("#edits").modal('hide');
+                    });
+                </script>
+            }
+        }
+        //edit
+        if (Request.Form["submitEdit"] != null)
+        {
+            var eskillName = Request["eskillName"].Trim();
+            var eskillDesc = Request["eskillDesc"].Trim();
+            var eskillStatus = Request["eskillStatus"];
+            foreach (var x in view)
+            {
+                if (eskillName == x.strJobSName && editId != x.strJobSId)
+                {
+                    validEdit++; errorEdit[1] = "Skill already taken";
+                }
+            }
+            if (eskillName.IsEmpty())
+            {
+                validEdit++; errorEdit[0] = "Skill Name is required";
+            }
+            if (validEdit == 0)
+            {
+                var update = "UPDATE tblJobSkill SET strJobSName=(@0), strJobSDesc=(@1), intJobSStatus=(@2) WHERE strJobSId=(@3)";
+                db.Execute(update, eskillName, eskillDesc, eskillStatus, editId);
+                <script>
+                    $(document).ready(function () {
+                        $("#edits").modal('hide');
+                        $("#success").modal({ backdrop: "static" });
+                        setTimeout(function () {
+                            $("#success").hide();
+                            window.location.href = "../Admin/JobSkill";
+                        }, 2000);
+                    });
+                </script>
+            }
+            else
+            {
+                <script>
+                    $(document).ready(function () {
+                        $("#edits").modal();
+                    });
+                </script>
+            }
+        }
+    }
+    <script>
+        $(document).ready(function () {
+            $('#tableData').DataTable();
+        });
+        $(document).on("click", "#view", function () {
+            var viewId = $(this).data("id");
+            window.location.href = "../Admin/JobSkill?viewId=" + viewId;
+        });
+        $(document).on("click", "#edit", function () {
+            var editId = $(this).data("id");
+            window.location.href = "../Admin/JobSkill?editId=" + editId;
+        });
+        function validate(event,idx) {
+            var char = String.fromCharCode(event.which);
+            var patt = /[\d`~!#$%^&*()_+={}|:";@@'<>,.?\\//\[\]]/;
+            var res = patt.test(char);
+            if (res) {
+                $('#' + idx + '').popover('show');
+                return false;
+            }
+            else {
+                $('#' + idx + '').popover('hide');
+            }
+        }
+    </script>
+}
+<div class="navbar navbar-default">
+    <div class="navbar-header">
+        <div class="navbar-brand">Personnel</div>
+        <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#myNavbar1">
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+        </button>
+    </div>
+    <div class="collapse navbar-collapse" id="myNavbar1">
+        <ul class="nav navbar-nav navbar-right">
+            <li><a href="../Admin/JobTitle">Job Titles</a></li>
+            <li class="active"><a href="../Admin/JobSkill">Job Skills</a></li>
+            <li><a href="../Admin/Employee">Employees</a></li>
+        </ul>
+    </div>
+</div>
+<hr />
+<!--TABLE-->
+<div class="row">
+    <div class="col-md-12">
+        <div class="col-md-12" style="margin-bottom: 1%">
+            <div class="col-md-2"><button class="btn btn-default" data-toggle="modal" data-target="#add1">Add Job Skill</button></div>
+        </div>
+        <!--TABLE-->
+        <div class="col-md-12">
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <h1 class="panel-title">Existing Job Skills</h1>
+                </div>
+                <div class="panel-body">
+                    <div class="table-responsive">
+                        <table id="tableData" class="table dataTable no-footer" role="grid">
+                            <thead>
+                                <tr>
+                                    <th>Skill Id</th>
+                                    <th>Skill Name</th>
+                                    <th>Description</th>
+                                    <th>Is Active</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                               @{
+                                   foreach (var x in view)
+                                   {
+                                    <tr>
+                                        <td>@x.strJobSId</td>
+                                        <td>@x.strJobSName</td>
+                                        <td>@x.strJobSDesc</td>
+                                        <td>@x.intJobSStatus</td>
+                                        <td>
+                                            <button class="btn btn-primary" id="view" name="view" data-id="@x.strJobSId">View</button>
+                                            <button class="btn btn-success" id="edit" name="edit" data-id="@x.strJobSId">Edit</button>
+                                        </td>
+                                    </tr>
+                                   }
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!--ADD-->
+<div class="modal fade" id="add1" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-sm" role="document">
+        <form action="" method="post">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    <h4 class="modal-title">Add Skill</h4>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-12">
+                            @{
+                                if (valid != 0)
+                                {
+                                    <div class="alert alert-danger" role="alert">
+                                        <ul>
+                                            @{
+                                                for (int x = 0; x < error.Length; x++)
+                                                {
+                                                    if (error[x] != null)
+                                                    {
+                                                        <li>@error[x]</li>
+                                                    }
+                                                }
+                                            }
+                                        </ul>
+                                    </div>
+                                                }
+                            }
+                            <label>Skill Id:</label>
+                            <input type="text" class="form-control" id="newId" name="newId" value="@newID" />
+                            <label>Skill Name:*</label>
+                            <input type="text" class="form-control" id="skillName" name="skillName" placeholder="Skill" onkeypress="return validate(event, this.id)" data-toggle="popover" value="@skillName" />
+                            <label>Description:</label>
+                            <textarea class="form-control" id="skillDesc" name="skillDesc" placeholder="Description" onkeypress="return validate(event,this.id)" data-toggle="popover">@skillDesc</textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <label style="float:left">All labels with "*" are required</label>
+                    <input name="submitAdd" type="submit" class="btn btn-default" value="Submit" />
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+<!--VIEW-->
+<div class="modal fade" id="views" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-sm" role="document">
+        <form action="" method="post">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    <h4 class="modal-title">View Skill</h4>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-12">
+                            @{
+                                var viewSkill = db.Query(selectSkill, viewId);
+                                foreach (var x in viewSkill)
+                                {
+                                    <label>Skill Id: @x.strJobSId</label><br />
+                                    <label>Skill:</label>
+                                    <input type="text" class="form-control" id="vskillName" name="vskillName" value="@x.strJobSName" readonly />
+                                    <label>Description:</label>
+                                    <textarea class="form-control" id="vskillDesc" name="vskillDesc" readonly>@x.strJobSDesc</textarea>
+                                }
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+<!--EDIT-->
+<div class="modal fade" id="edits" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-sm" role="document">
+        <form action="" method="post">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    <h4 class="modal-title">Edit Skill</h4>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-12">
+                            @{
+                                if (validEdit != 0)
+                                {
+                                    <div class="alert alert-danger" role="alert">
+                                        <ul>
+                                            @{
+                                                for (int x = 0; x < errorEdit.Length; x++)
+                                                {
+                                                    if (errorEdit[x] != null)
+                                                    {
+                                                        <li>@errorEdit[x]</li>
+                                                    }
+                                                }
+                                            }
+                                        </ul>
+                                    </div>
+                                                }
+                            }
+                            @{
+                                var editSkill = db.Query(selectSkill, editId);
+                                foreach (var x in editSkill)
+                                {
+                                    <label>Skill Id: @x.strJobSId</label><br />
+                                    <label>Skill:*</label>
+                                    <input type="text" class="form-control" id="eskillName" name="eskillName" placeholder="Skill Name" onkeypress="return validate(event, this.id)" data-toggle="popover" value="@x.strJobSName" />
+                                    <label>Description:</label>
+                                    <textarea class="form-control" id="eskillDesc" name="eskillDesc" placeholder="Description" onkeypress="return validate(event, this.id)" data-toggle="popover">@x.strJobSDesc</textarea>
+                                    <div class="radio">
+                                        <label><input type="radio" name="eskillStatus" id="active" value="1" />Active</label>
+                                        <label><input type="radio" name="eskillStatus" id="inactive" value="0" />Inactive</label>
+                                    </div>
+                                    if (x.intJobSStatus)
+                                    {
+                                        <script>
+                                            document.getElementById("active").checked = true;
+                                        </script>
+                                    }
+                                    else
+                                    {
+                                        <script>
+                                            document.getElementById("inactive").checked = true;
+                                        </script>
+                                    }
+                                }
+                            }
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <label style="float:left">All labels with "*" are required</label>
+                    <input name="submitEdit" type="submit" class="btn btn-default" value="Submit" />
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+<!--SUCCESS-->
+<div class="modal fade" id="success" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-sm" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title"><span class="success">SUCCESS</span></h4>
+            </div>
+            <div class="modal-body">
+                <p>SUCCESS!</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+

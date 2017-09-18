@@ -1,0 +1,346 @@
+﻿@using WebMatrix.Data;
+@{
+    ViewBag.Title = "Section";
+    Layout = "~/Views/Shared/_LayoutAdminMaintenance.cshtml";
+    var db = Database.Open("dbConnect");
+    var view = db.Query("SELECT * FROM tblSection");
+    var selectSec = "SELECT * FROM tblSection WHERE strSecId=(@0)";
+    var count = db.QueryValue("SELECT COUNT(*) FROM tblSection") + 1;
+    var leftPad = "SELECT CONCAT('SEC-', LPAD((@0),4,'0'))";
+    var secId = db.QueryValue(leftPad, count);
+    var viewId = Request["viewId"];
+    var editId = Request["editId"];
+    var secName = "";
+    var secDesc = "";
+    string[] error = new string[5];
+    string[] errorEdit = new string[5];
+    var valid = 0;
+    var validEdit = 0;
+    if (viewId != null)
+    {
+        <script>
+            $(document).ready(function () {
+                $("#views").modal();
+            });
+        </script>
+    }
+    if (editId != null)
+    {
+        <script>
+            $(document).ready(function () {
+                $("#edits").modal();
+            });
+        </script>
+    }
+    if (IsPost)
+    {
+        if (Request.Form["submitAdd"] != null)
+        {
+            secName = Request["secName"].Trim();
+            secDesc = Request["secDesc"].Trim();
+            if (secName.IsEmpty())
+            {
+                valid++;
+                error[0] = "Section Name is Required";
+            }
+            foreach (var x in view)
+            {
+                if (secName == x.strSecName)
+                {
+                    valid++; error[1] = "Section already taken";
+                }
+            }
+            if (valid == 0)
+            {
+                var insert = "INSERT INTO tblSection (strSecId, strSecName, strSecDesc) VALUES (@0,@1,@2)";
+                db.Query(insert, secId, secName, secDesc);
+                <script>
+                    $(document).ready(function () {
+                        $("#views").modal('hide');
+                        $("#edits").modal('hide');
+                        $("#success").modal({ backdrop: "static" });
+                        setTimeout(function () {
+                            $("#success").hide();
+                            window.location.href = "../Admin/Section";
+                        }, 2000);
+                    });
+                </script>
+            }
+            else
+            {
+                <script>
+                    $(document).ready(function () {
+                        $("#add1").modal();
+                        $("#views").modal('hide');
+                        $("#edits").modal('hide');
+                    });
+                </script>
+            }
+        }
+        if (Request.Form["submitEdit"] != null)
+        {
+            var esecName = Request["esecName"].Trim();
+            var esecDesc = Request["esecDesc"].Trim();
+            if (esecName.IsEmpty())
+            {
+                validEdit++;
+                errorEdit[0] = "Section Name is Required";
+            }
+            foreach (var x in view)
+            {
+                if (esecName == x.strSecName && editId != x.strSecId)
+                {
+                    validEdit++; errorEdit[1] = "Section already taken";
+                }
+            }
+            if (validEdit == 0)
+            {
+                var update = "UPDATE tblSection SET strSecName=(@0), strSecDesc=(@1) WHERE strSecId=(@2)";
+                db.Query(update, esecName, esecDesc, editId);
+                <script>
+                    $(document).ready(function () {
+                        $("#edits").modal('hide');
+                        $("#success").modal({ backdrop: "static" });
+                        setTimeout(function () {
+                            $("#success").hide();
+                            window.location.href = "../Admin/Section";
+                        }, 2000);
+                    });
+                </script>
+            }
+            else
+            {
+                <script>
+                    $(document).ready(function () {
+                        $("#edits").modal();
+                    });
+                </script>
+            }
+        }
+    }
+    <script>
+        $(document).ready(function () {
+            $('#tableData').DataTable();
+        });
+        function validate(event, idx) {
+            var char = String.fromCharCode(event.which);
+            var patt = /[\d`~!#$%^&*()_+={}|:";@@'<>,.?\\//\[\]]/;
+            var res = patt.test(char);
+            if (res) {
+                $('#' + idx + '').popover('show');
+                return false;
+            }
+            else {
+                $('#' + idx + '').popover('hide');
+            }
+        }
+        $(document).on("click", "#view", function () {
+            var viewId = $(this).data("id");
+            window.location.href = "../Admin/Section?viewId=" + viewId;
+        });
+        $(document).on("click", "#edit", function () {
+            var editId = $(this).data("id");
+            window.location.href = "../Admin/Section?editId=" + editId;
+        });
+    </script>
+}
+<div class="navbar navbar-default">
+    <div class="navbar-header">
+        <div class="navbar-brand">Project Maintenance</div>
+        <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#myNavbar1">
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+        </button>
+    </div>
+    <div class="collapse navbar-collapse" id="myNavbar1">
+        <ul class="nav navbar-nav navbar-right">
+            <li class="active"><a href="../Admin/Section">Sections</a></li>
+            <li><a href="../Admin/Office">Offices</a></li>
+            <li><a href="../Admin/Service">Services</a></li>
+        </ul>
+    </div>
+</div>
+<hr />
+<div class="row">
+    <div class="col-md-12" style="margin-bottom: 1%">
+        <div class="col-md-2"><button class="btn btn-default" data-toggle="modal" data-target="#add1">Add Section</button></div>
+    </div>
+    <div class="col-md-12">
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <h1 class="panel-title">Sections</h1>
+            </div>
+            <div class="panel-body">
+                <div class="table-responsive">
+                    <table id="tableData" class="table dataTable no-footer" role="grid">
+                        <thead>
+                            <tr>
+                                <th>Section Id</th>
+                                <th>Section</th>
+                                <th>Description</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @{
+                                foreach (var x in view)
+                                {
+                                    <tr>
+                                        <td>@x.strSecId</td>
+                                        <td>@x.strSecName</td>
+                                        <td>@x.strSecDesc</td>
+                                        <td>
+                                            <button class="btn btn-primary" id="view" name="view" data-id="@x.strSecId">View</button>
+                                            <button class="btn btn-success" id="edit" name="edit" data-id="@x.strSecId">Edit</button>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!--ADD-->
+<div class="modal fade" id="add1" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-sm" role="document">
+        <form action="" method="post">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    <h4 class="modal-title">Add Section</h4>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-12">
+                            @{
+                                if (valid != 0)
+                                {
+                                    <div class="alert alert-danger" role="alert">
+                                        <ul>
+                                            @{
+                                                for (int x = 0; x < error.Length; x++)
+                                                {
+                                                    if (error[x] != null)
+                                                    {
+                                                        <li>@error[x]</li>
+                                                    }
+                                                }
+                                            }
+                                        </ul>
+                                    </div>
+                                                }
+                            }
+                            <label>Section Id: @secId</label><br />
+                            <label>Section:*</label>
+                            <input type="text" class="form-control" id="secName" name="secName" placeholder="Section" onkeypress="return validate(event, this.id)" data-toggle="popover" value="@secName" />
+                            <label>Description:</label>
+                            <textarea class="form-control" id="secDesc" name="secDesc" placeholder="Description" onkeypress="return validate(event,this.id)" data-toggle="popover">@secDesc</textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <label style="float:left">All labels with "*" are required</label>
+                    <input name="submitAdd" type="submit" class="btn btn-default" value="Submit" />
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+<!--VIEW-->
+<div class="modal fade" id="views" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-sm" role="document">
+        <form action="" method="post">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    <h4 class="modal-title">View Section</h4>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-12">
+                            @{
+                                var viewSec = db.Query(selectSec, viewId);
+                                foreach (var x in viewSec)
+                                {
+                                    <label>Section Id: @x.strSecId</label><br />
+                                    <label>Section:</label>
+                                    <input type="text" class="form-control" id="vsecName" name="vsecName" placeholder="Sec" value="@x.strSecName" readonly />
+                                    <label>Description:</label>
+                                    <textarea class="form-control" id="vsecDesc" name="vsecDesc" placeholder="Sec" readonly>@x.strSecDesc</textarea>
+                                }
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+<!--EDIT-->
+<div class="modal fade" id="edits" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-sm" role="document">
+        <form action="" method="post">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    <h4 class="modal-title">Edit Sec</h4>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-12">
+                            @{
+                                if (validEdit != 0)
+                                {
+                                    <div class="alert alert-danger" role="alert">
+                                        <ul>
+                                            @{
+                                                for (int x = 0; x < error.Length; x++)
+                                                {
+                                                    if (errorEdit[x] != null)
+                                                    {
+                                                        <li>@errorEdit[x]</li>
+                                                    }
+                                                }
+                                            }
+                                        </ul>
+                                    </div>
+                                                }
+                            }
+                            @{
+                                viewSec = db.Query(selectSec, editId);
+                                foreach (var x in viewSec)
+                                {
+                                    <label>Section Id: @x.strSecId</label><br />
+                                    <label>Section:*</label>
+                                    <input type="text" class="form-control" id="esecName" name="esecName" placeholder="Sec" onkeypress="return validate(event, this.id)" data-toggle="popover" value="@x.strSecName" />
+                                    <label>Description:</label>
+                                    <textarea class="form-control" id="esecDesc" name="esecDesc" placeholder="Description" onkeypress="return validate(event,this.id)" data-toggle="popover">@x.strSecDesc</textarea>
+                                }
+                            }
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <label style="float:left">All labels with "*" are required</label>
+                    <input name="submitEdit" type="submit" class="btn btn-default" value="Submit" />
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+<!--SUCCESS-->
+<div class="modal fade" id="success" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-sm" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title"><span class="success">SUCCESS</span></h4>
+            </div>
+            <div class="modal-body">
+                <p>SUCCESS!</p>
+            </div>
+        </div>
+    </div>
+</div>

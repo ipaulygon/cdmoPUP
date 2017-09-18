@@ -1,0 +1,89 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RIPS - @ViewBag.Title</title>
+    @Styles.Render("~/Content/bootstrap.css")
+    @Styles.Render("~/Content/jquery.datetimepicker.css")
+    @Styles.Render("~/Content/dataTables.bootstrap.css")
+    @Styles.Render("~/Content/dataTables.foundation.css")
+    @Styles.Render("~/Content/dataTables.jqueryui.css")
+    @Styles.Render("~/Content/font-awesome.css")
+    @Styles.Render("~/Content/fullcalendar.css")
+    @Styles.Render("~/Content/scheduler.css")
+    @Styles.Render("~/Content/style.css")
+    @Scripts.Render("~/Scripts/bootstrap.js")
+    @Scripts.Render("~/Scripts/bootstrap.min.js")
+    @Scripts.Render("~/Scripts/jquery.js")
+    @Scripts.Render("~/Scripts/jquery-ui.min.js")
+    @Scripts.Render("~/Scripts/jquery.datetimepicker.full.min.js")
+    @Scripts.Render("~/Scripts/jquery.dataTables.js")
+    @Scripts.Render("~/Scripts/dataTables.bootstrap.min.js")
+    @Scripts.Render("~/Scripts/dataTables.foundation.js")
+    @Scripts.Render("~/Scripts/dataTables.jqueryui.js")
+    @Scripts.Render("~/Scripts/dataTables.select.min.js")
+    @Scripts.Render("~/Scripts/moment.js")
+    @Scripts.Render("~/Scripts/Chart.js")
+    @Scripts.Render("~/Scripts/Chart.min.js")
+    @Scripts.Render("~/Scripts/fullcalendar.js")
+    @Scripts.Render("~/Scripts/scheduler.js")
+    @Scripts.Render("~/bundles/bootstrap")
+</head>
+<body>
+    <div class="nav-side-menu">
+        <div class="brand"><img src="../Content/lol.png" style="height:210px;width:250px" /></div>
+        <i class="fa fa-bars fa-2x toggle-btn" data-toggle="collapse" data-target="#menu-content"></i>
+        <div class="menu-list">
+            <ul id="menu-content" class="menu-content collapse out">
+                <li data-toggle="collapse" data-target="#maintenance" class="collapsed">
+                    <a href="#"> MAINTENANCE <span class="glyphicon glyphicon-chevron-down"></span></a>
+                </li>
+                <ul class="sub-menu collapse" id="maintenance">
+                    <li><a href="../Admin/JobTitle"><img src="../Content/Icons/profile.png" /> Personnel</a></li>
+                    <li><a href="../Admin/ItemType"><img src="../Content/Icons/diamond.png" /> Inventory</a></li>
+                    <li><a href="../Admin/AmenityType"><img src="../Content/Icons/placeholder.png" /> Amenity</a></li>
+                    <li><a href="../Admin/Section"><img src="../Content/Icons/browser-4.png" /> Project Maintenance</a></li>
+                </ul>
+                <li data-toggle="collapse" data-target="#transaction" class="collapsed">
+                    <a href="#"> TRANSACTION <span class="glyphicon glyphicon-chevron-down"></span></a>
+                </li>
+                <ul class="sub-menu collapse in" id="transaction">
+                    <li><a href="../Admin/Reservation"><img src="../Content/Icons/attach.png" /> Reservation</a></li>
+                    <li><a href="../Admin/ProjectRequest"><img src="../Content/Icons/computer.png" /> Project Design</a></li>
+                    <li><a href="../Admin/ItemRequisition"><img src="../Content/Icons/portfolio.png" /> Inventory</a></li>
+                </ul>
+                <li data-toggle="collapse" data-target="#queries" class="collapsed">
+                    <a href="#"> QUERIES <span class="glyphicon glyphicon-chevron-down"></span></a>
+                </li>
+                <ul class="sub-menu collapse" id="queries">
+                    <li><a href="../Admin/ViewPersonnel"><img src="../Content/Icons/avatar.png" /> Personnel</a></li>
+                    <li><a href="../Admin/ViewReservation"><img src="../Content/Icons/tag.png" /> Reservation</a></li>
+                    <li><a href="../Admin/ViewInventory"><img src="../Content/Icons/smartphone-2.png" /> Inventory</a></li>
+                    <li><a href="../Admin/ViewProject"><img src="../Content/Icons/sketchbook.png" /> Project</a></li>
+                </ul>
+                <li data-toggle="collapse" data-target="#reports" class="collapsed">
+                    <a href="#"> REPORTS <span class="glyphicon glyphicon-chevron-down"></span></a>
+                </li>
+                <ul class="sub-menu collapse" id="reports">
+                    <li><a href="../Admin/ReportReservation"><img src="../Content/Icons/folder-2.png" /> Reservation</a></li>
+                    <li><a href="../Admin/ReportInventory"><img src="../Content/Icons/folder.png" /> Inventory</a></li>
+                    <li><a href="../Admin/ReportProject"><img src="../Content/Icons/folder-1.png" /> Project</a></li>
+                </ul>
+            </ul>
+        </div>
+    </div>
+    <div class="container" id="main">
+        <div class="row">
+            <div class="col-md-12">
+                @RenderBody()
+                <br />
+                <hr />
+                <footer>
+                    <p>&copy; @DateTime.Now.Year - Reservation, Inventory and Project Monitoring System</p>
+                </footer>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

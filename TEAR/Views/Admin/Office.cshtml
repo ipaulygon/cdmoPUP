@@ -1,0 +1,377 @@
+﻿@using WebMatrix.Data;
+@{
+    ViewBag.Title = "Office";
+    Layout = "~/Views/Shared/_LayoutAdminMaintenance.cshtml";
+    var db = Database.Open("dbConnect");
+    var view = db.Query("SELECT * FROM tblOffice");
+    var selectOffice = "SELECT * FROM tblOffice WHERE strOfficeId=(@0)";
+    var count = db.QueryValue("SELECT COUNT(*) FROM tblOffice") + 1;
+    var leftPad = "SELECT CONCAT('OFFICE-', LPAD((@0),4,'0'))";
+    var officeId = db.QueryValue(leftPad, count);
+    var viewId = Request["viewId"];
+    var editId = Request["editId"];
+    var officeName = "";
+    var officeDesc = "";
+    var officeContact = "";
+    string[] error = new string[5];
+    string[] errorEdit = new string[5];
+    var valid = 0;
+    var validEdit = 0;
+    if (viewId != null)
+    {
+        <script>
+            $(document).ready(function () {
+                $("#views").modal();
+            });
+        </script>
+    }
+    if (editId != null)
+    {
+        <script>
+            $(document).ready(function () {
+                $("#edits").modal();
+            });
+        </script>
+    }
+    if (IsPost)
+    {
+        if (Request.Form["submitAdd"] != null)
+        {
+            officeName = Request["officeName"].Trim();
+            officeDesc = Request["officeDesc"].Trim();
+            officeContact = Request["officeContact"].Trim();
+            if (officeName.IsEmpty())
+            {
+                valid++;
+                error[0] = "Office Name is Required";
+            }
+            if (officeContact.IsEmpty())
+            {
+                valid++; error[1] = "Contact is required";
+            }
+            foreach (var x in view)
+            {
+                if (officeName == x.strOfficeName)
+                {
+                    valid++; error[2] = "Office already taken";
+                }
+            }
+            if (valid == 0)
+            {
+                var insert = "INSERT INTO tblOffice (strOfficeId, strOfficeName, strOfficeDesc, strOfficeContact) VALUES (@0,@1,@2,@3)";
+                db.Query(insert, officeId, officeName, officeDesc, officeContact);
+                <script>
+                    $(document).ready(function () {
+                        $("#views").modal('hide');
+                        $("#edits").modal('hide');
+                        $("#success").modal({ backdrop: "static" });
+                        setTimeout(function () {
+                            $("#success").hide();
+                            window.location.href = "../Admin/Office";
+                        }, 2000);
+                    });
+                </script>
+            }
+            else
+            {
+                <script>
+                    $(document).ready(function () {
+                        $("#add1").modal();
+                        $("#views").modal('hide');
+                        $("#edits").modal('hide');
+                    });
+                </script>
+            }
+        }
+        if (Request.Form["submitEdit"] != null)
+        {
+            var eofficeName = Request["eofficeName"].Trim();
+            var eofficeDesc = Request["eofficeDesc"].Trim();
+            var eofficeContact = Request["eofficeContact"].Trim();
+            if (eofficeName.IsEmpty())
+            {
+                validEdit++;
+                errorEdit[0] = "Office Name is required";
+            }
+            if (eofficeContact.IsEmpty())
+            {
+                validEdit++; errorEdit[1] = "Contact is required";
+            }
+            foreach (var x in view)
+            {
+                if (eofficeName == x.strOfficeName && editId != x.strOfficeId)
+                {
+                    validEdit++; errorEdit[2] = "Office already taken";
+                }
+            }
+            if (validEdit == 0)
+            {
+                var update = "UPDATE tblOffice SET strOfficeName=(@0), strOfficeDesc=(@1), strOfficeContact=(@2) WHERE strOfficeId=(@3)";
+                db.Query(update, eofficeName, eofficeDesc, eofficeContact, editId);
+                <script>
+                    $(document).ready(function () {
+                        $("#edits").modal('hide');
+                        $("#success").modal({ backdrop: "static" });
+                        setTimeout(function () {
+                            $("#success").hide();
+                            window.location.href = "../Admin/Office";
+                        }, 2000);
+                    });
+                </script>
+            }
+            else
+            {
+                <script>
+                    $(document).ready(function () {
+                        $("#edits").modal();
+                    });
+                </script>
+            }
+        }
+    }
+    <script>
+        $(document).ready(function () {
+            $('#tableData').DataTable();
+        });
+        function validate(event, idx) {
+            var char = String.fromCharCode(event.which);
+            var patt = /[\d`~!#$%^&*()_+={}|:";@@'<>,.?\\//\[\]]/;
+            var res = patt.test(char);
+            if (res) {
+                $('#' + idx + '').popover('show');
+                return false;
+            }
+            else {
+                $('#' + idx + '').popover('hide');
+            }
+        }
+        function contact(event, idx) {
+            var char = String.fromCharCode(event.which);
+            var patt = /[^\d{0,11}]/;
+            var res = patt.test(char);
+            if (res) {
+                $('#' + idx + '').popover('show');
+                return false;
+            }
+            else {
+                $('#' + idx + '').popover('hide');
+            }
+        }
+        $(document).on("click", "#view", function () {
+            var viewId = $(this).data("id");
+            window.location.href = "../Admin/Office?viewId=" + viewId;
+        });
+        $(document).on("click", "#edit", function () {
+            var editId = $(this).data("id");
+            window.location.href = "../Admin/Office?editId=" + editId;
+        });
+    </script>
+}
+<div class="navbar navbar-default">
+    <div class="navbar-header">
+        <div class="navbar-brand">Project Maintenance</div>
+        <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#myNavbar1">
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+        </button>
+    </div>
+    <div class="collapse navbar-collapse" id="myNavbar1">
+        <ul class="nav navbar-nav navbar-right">
+            <li><a href="../Admin/Section">Sections</a></li>
+            <li class="active"><a href="../Admin/Office">Offices</a></li>
+            <li><a href="../Admin/Service">Services</a></li>
+        </ul>
+    </div>
+</div>
+<hr />
+<div class="row">
+    <div class="col-md-12" style="margin-bottom: 1%">
+        <div class="col-md-2"><button class="btn btn-default" data-toggle="modal" data-target="#add1">Add Office</button></div>
+    </div>
+    <div class="col-md-12">
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <h1 class="panel-title">Offices</h1>
+            </div>
+            <div class="panel-body">
+                <div class="table-responsive">
+                    <table id="tableData" class="table dataTable no-footer" role="grid">
+                        <thead>
+                            <tr>
+                                <th>Office Id</th>
+                                <th>Office</th>
+                                <th>Description</th>
+                                <th>Contact</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @{
+                                foreach (var x in view)
+                                {
+                                    <tr>
+                                        <td>@x.strOfficeId</td>
+                                        <td>@x.strOfficeName</td>
+                                        <td>@x.strOfficeDesc</td>
+                                        <td>@x.strOfficeContact</td>
+                                        <td>
+                                            <button class="btn btn-primary" id="view" name="view" data-id="@x.strOfficeId">View</button>
+                                            <button class="btn btn-success" id="edit" name="edit" data-id="@x.strOfficeId">Edit</button>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!--ADD-->
+<div class="modal fade" id="add1" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-md" role="document">
+        <form action="" method="post">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    <h4 class="modal-title">Add Office</h4>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-12">
+                            @{
+                                if (valid != 0)
+                                {
+                                    <div class="alert alert-danger" role="alert">
+                                        <ul>
+                                            @{
+                                                for (int x = 0; x < error.Length; x++)
+                                                {
+                                                    if (error[x] != null)
+                                                    {
+                                                        <li>@error[x]</li>
+                                                    }
+                                                }
+                                            }
+                                        </ul>
+                                    </div>
+                                                }
+                            }
+                            <label>Office Id: @officeId</label><br />
+                            <label>Office:*</label>
+                            <input type="text" class="form-control" id="officeName" name="officeName" placeholder="Office" onkeypress="return validate(event, this.id)" data-toggle="popover" value="@officeName" />
+                            <label>Description:</label>
+                            <textarea class="form-control" id="officeDesc" name="officeDesc" placeholder="Description" onkeypress="return validate(event,this.id)" data-toggle="popover">@officeDesc</textarea>
+                            <label>Contact No.:*</label>
+                            <input class="form-control" id="officeContact" name="officeContact" placeholder="Contact" onkeypress="return contact(event,this.id)" data-toggle="popover" value="@officeContact" />
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <label style="float:left">All labels with "*" are required</label>
+                    <input name="submitAdd" type="submit" class="btn btn-default" value="Submit" />
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+<!--VIEW-->
+<div class="modal fade" id="views" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-md" role="document">
+        <form action="" method="post">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    <h4 class="modal-title">View Office</h4>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-12">
+                            @{
+                                var viewOffice = db.Query(selectOffice, viewId);
+                                foreach (var x in viewOffice)
+                                {
+                                    <label>Office Id: @x.strOfficeId</label><br />
+                                    <label>Office Name:</label>
+                                    <input type="text" class="form-control" id="vofficeName" name="vofficeName" placeholder="Office" value="@x.strOfficeName" readonly />
+                                    <label>Description:</label>
+                                    <textarea class="form-control" id="vofficeDesc" name="vofficeDesc" placeholder="Office" readonly>@x.strOfficeDesc</textarea>
+                                    <label>Contact No.:</label>
+                                    <input class="form-control" id="vofficeContact" name="vofficeContact" placeholder="Contact" value="@x.strOfficeContact" />
+                                }
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+<!--EDIT-->
+<div class="modal fade" id="edits" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-md" role="document">
+        <form action="" method="post">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    <h4 class="modal-title">Edit Office</h4>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-12">
+                            @{
+                                if (validEdit != 0)
+                                {
+                                    <div class="alert alert-danger" role="alert">
+                                        <ul>
+                                            @{
+                                                for (int x = 0; x < error.Length; x++)
+                                                {
+                                                    if (errorEdit[x] != null)
+                                                    {
+                                                        <li>@errorEdit[x]</li>
+                                                    }
+                                                }
+                                            }
+                                        </ul>
+                                    </div>
+                                                }
+                            }
+                            @{
+                                viewOffice = db.Query(selectOffice, editId);
+                                foreach (var x in viewOffice)
+                                {
+                                    <label>Office Id: @x.strOfficeId</label><br />
+                                    <label>Office Name:*</label>
+                                    <input type="text" class="form-control" id="eofficeName" name="eofficeName" placeholder="Office" onkeypress="return validate(event, this.id)" data-toggle="popover" value="@x.strOfficeName" />
+                                    <label>Description:</label>
+                                    <textarea class="form-control" id="eofficeDesc" name="eofficeDesc" placeholder="Description" onkeypress="return validate(event,this.id)" data-toggle="popover">@x.strOfficeDesc</textarea>
+                                    <label>Contact No.:*</label>
+                                    <input class="form-control" id="eofficeContact" name="eofficeContact" placeholder="Contact" onkeypress="return contact(event,this.id)" data-toggle="popover" value="@x.strOfficeContact" />
+                                }
+                            }
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <label style="float:left">All labels with "*" are required</label>
+                    <input name="submitEdit" type="submit" class="btn btn-default" value="Submit" />
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+<!--SUCCESS-->
+<div class="modal fade" id="success" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-sm" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title"><span class="success">SUCCESS</span></h4>
+            </div>
+            <div class="modal-body">
+                <p>SUCCESS!</p>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,65 @@
+﻿@using WebMatrix.Data;
+@{
+    ViewBag.Title = "View Personnel";
+    Layout = "~/Views/Shared/_LayoutAdminQueries.cshtml";
+    var db = Database.Open("dbConnect");
+    var view = db.Query("SELECT * FROM tblEmployee,tblJobTitle WHERE strEmpJobId=strJobTId");
+    <script>
+        $(document).ready(function () {
+            $('#tableData').DataTable();
+        });
+    </script>
+}
+<div class="navbar navbar-default">
+    <div class="navbar-header">
+        <div class="navbar-brand">Personnel View</div>
+        <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#myNavbar1">
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+        </button>
+    </div>
+</div>
+<hr />
+<div class="row">
+    <div class="col-md-12">
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <h1 class="panel-title">Employees</h1>
+            </div>
+            <div class="panel-body">
+                <div class="table-responsive">
+                    <table id="tableData" class="table dataTable no-footer" role="grid">
+                        <thead>
+                            <tr>
+                                <th>Employee Id</th>
+                                <th>Employee Name</th>
+                                <th>Contact</th>
+                                <th>Birth Date</th>
+                                <th>Hired</th>
+                                <th>Job</th>
+                                <th>Is Active</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @{
+                                foreach (var x in view)
+                                {
+                                    <tr>
+                                        <td>@x.strEmpId</td>
+                                        <td>@x.strEmpFirst @x.strEmpMiddle @x.strEmpLast</td>
+                                        <td>@x.strEmpContact</td>
+                                        <td>@x.dtmEmpBirth.ToString()</td>
+                                        <td>@x.dtmEmpHired.ToString()</td>
+                                        <td>@x.strJobTName</td>
+                                        <td>@x.intEmpStatus</td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+

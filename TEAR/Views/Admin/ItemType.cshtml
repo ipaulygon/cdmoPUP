@@ -1,0 +1,398 @@
+﻿@using WebMatrix.Data;
+@{
+    ViewBag.Title = "Item Type";
+    Layout = "~/Views/Shared/_LayoutAdminMaintenance.cshtml";
+    var db = Database.Open("dbConnect");
+    var view = db.Query("SELECT * FROM tblItemType");
+    var selectType = "SELECT * FROM tblItemType WHERE strItemTypeId=(@0)";
+    /*var count = db.QueryValue("SELECT COUNT(*) FROM tblItemType") + 1;
+    var leftPad = "SELECT CONCAT('ITYPE-', LPAD((@0),4,'0'))";
+    var itypeId = db.QueryValue(leftPad, count);*/
+    var viewId = Request["viewId"];
+    var editId = Request["editId"];
+    var itypeId = "";
+    var itypeName = "";
+    var itypeDesc = "";
+    string[] error = new string[5];
+    string[] errorEdit = new string[5];
+    var validEdit = 0;
+    var valid = 0;
+    var id = db.QueryValue("SELECT strItemTypeId FROM tblItemType ORDER BY strItemTypeId DESC LIMIT 1");
+    char[] lastID = id.ToCharArray();
+    int ctr = 0;
+    string tempID;
+    string[] tempNew = new string[100];
+    string newID = "";
+    bool add = true;
+    for (ctr = (lastID.Length) - 1; ctr >= 0; ctr--)
+    {
+
+        tempID = lastID[ctr].ToString();
+
+        if (add)
+        {
+            if (tempID == "1" || tempID == "2" || tempID == "3" || tempID == "4" || tempID == "5" || tempID == "6" || tempID == "7" || tempID == "8" || tempID == "9" || tempID == "0")
+            {
+                if (tempID == "9")
+                {
+                    tempID = "0";
+                    tempNew[ctr] = tempID;
+
+                }
+                else
+                {
+                    tempID = (Convert.ToInt32(tempID.ToString()) + 1).ToString();
+                    tempNew[ctr] = tempID;
+                    add = false;
+                }
+            }
+            else
+            {
+                tempNew[ctr] = tempID;
+            }
+        }
+        tempNew[ctr] = tempID;
+    }
+    for (ctr = 0; ctr < lastID.Length; ctr++)
+    {
+        newID = newID + tempNew[ctr].ToString();
+    }
+    if (viewId != null)
+    {
+        <script>
+            $(document).ready(function () {
+                $("#views").modal();
+            });
+        </script>
+    }
+    if(editId != null)
+    {
+        <script>
+            $(document).ready(function () {
+                $("#edits").modal();
+            });
+        </script>
+    }
+    if (IsPost)
+    {
+        if (Request.Form["submitAdd"] != null)
+        {
+            itypeId = Request["newId"].Trim();
+            itypeName = Request["itypeName"].Trim();
+            itypeDesc = Request["itypeDesc"].Trim();
+            if (itypeId.IsEmpty())
+            {
+                valid++; error[2] = "Unit Id is required";
+            }
+            if (itypeName.IsEmpty())
+            {
+                valid++;
+                error[0] = "Item Type Name is Required";
+            }
+            foreach (var x in view)
+            {
+                if (itypeName == x.strItemTypeName)
+                {
+                    valid++; error[1] = "Type already taken";
+                }
+                if (itypeId == x.strItemTypeId)
+                {
+                    valid++; error[3] = "Item Type Id already taken";
+                }
+            }
+            if (valid == 0)
+            {
+                var insert = "INSERT INTO tblItemType (strItemTypeId, strItemTypeName, strItemTypeDesc) VALUES (@0,@1,@2)";
+                db.Query(insert, itypeId, itypeName, itypeDesc);
+                <script>
+                    $(document).ready(function () {
+                        $("#success").modal({ backdrop: "static" });
+                        $("#views").modal('hide');
+                        $("#edits").modal('hide');
+                        setTimeout(function () {
+                            $("#success").hide();
+                            window.location.href = "../Admin/ItemType";
+                        }, 2000);
+                    });
+                </script>
+            }
+            else
+            {
+                <script>
+                    $(document).ready(function () {
+                        $("#add1").modal();
+                        $("#views").modal('hide');
+                        $("#edits").modal('hide');
+                    });
+                </script>
+            }
+        }
+        if (Request.Form["submitEdit"] != null)
+        {
+            var eitypeName = Request["eitypeName"].Trim();
+            var eitypeDesc = Request["eitypeDesc"].Trim();
+            if (eitypeName.IsEmpty())
+            {
+                validEdit++;
+                errorEdit[0] = "Item Type Name is Required";
+            }
+            foreach (var x in view)
+            {
+                if (eitypeName == x.strItemTypeName && editId != x.strItemTypeId)
+                {
+                    validEdit++; errorEdit[1] = "Type already taken";
+                }
+            }
+            if (validEdit == 0)
+            {
+                var update = "UPDATE tblItemType SET strItemTypeName=(@0), strItemTypeDesc=(@1) WHERE strItemTypeId=(@2)";
+                db.Query(update, eitypeName, eitypeDesc, editId);
+                <script>
+                    $(document).ready(function () {
+                        $("#edits").modal('hide');
+                        $("#success").modal({ backdrop: "static" });
+                        setTimeout(function () {
+                            $("#success").hide();
+                            window.location.href = "../Admin/ItemType";
+                        }, 2000);
+                    });
+                </script>
+            }
+            else
+            {
+                <script>
+                    $(document).ready(function () {
+                        $("#edits").modal();
+                    });
+                </script>
+            }
+        }
+    }
+    <script>
+        $(document).ready(function () {
+            $('#tableData').DataTable();
+        });
+        function validate(event, idx) {
+            var char = String.fromCharCode(event.which);
+            var patt = /[\d`~!#$%^&*()_+={}|:";@@'<>,.?\\//\[\]]/;
+            var res = patt.test(char);
+            if (res) {
+                $('#' + idx + '').popover('show');
+                return false;
+            }
+            else {
+                $('#' + idx + '').popover('hide');
+            }
+        }
+        $(document).on("click", "#view", function () {
+            var viewId = $(this).data("id");
+            window.location.href = "../Admin/ItemType?viewId=" + viewId;
+        });
+        $(document).on("click", "#edit", function () {
+            var editId = $(this).data("id");
+            window.location.href = "../Admin/ItemType?editId=" + editId;
+        });
+    </script>
+}
+<div class="navbar navbar-default">
+    <div class="navbar-header">
+        <div class="navbar-brand">Inventory</div>
+        <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#myNavbar1">
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+        </button>
+    </div>
+    <div class="collapse navbar-collapse" id="myNavbar1">
+        <ul class="nav navbar-nav navbar-right">
+            <li class="active"><a href="../Admin/ItemType">Item Types</a></li>
+            <li><a href="../Admin/Unit">Units</a></li>
+            <li><a href="../Admin/Item">Items</a></li>
+        </ul>
+    </div>
+</div>
+<hr />
+<div class="row">
+    <div class="col-md-12" style="margin-bottom: 1%">
+        <div class="col-md-2"><button class="btn btn-default" data-toggle="modal" data-target="#add1">Add Item Type</button></div>
+    </div>
+    <div class="col-md-12">
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <h1 class="panel-title">Item Types</h1>
+            </div>
+            <div class="panel-body">
+                <div class="table-responsive">
+                    <table id="tableData" class="table dataTable no-footer" role="grid">
+                        <thead>
+                            <tr>
+                                <th>Item Type Id</th>
+                                <th>Item Type</th>
+                                <th>Description</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @{
+                                foreach (var x in view)
+                                {
+                                    <tr>
+                                        <td>@x.strItemTypeId</td>
+                                        <td>@x.strItemTypeName</td>
+                                        <td>@x.strItemTypeDesc</td>
+                                        <td>
+                                            <button class="btn btn-primary" id="view" name="view" data-id="@x.strItemTypeId">View</button>
+                                            <button class="btn btn-success" id="edit" name="edit" data-id="@x.strItemTypeId">Edit</button>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!--ADD-->
+<div class="modal fade" id="add1" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-sm" role="document">
+        <form action="" method="post">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    <h4 class="modal-title">Add Item Type</h4>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-12">
+                            @{
+                                if (valid != 0)
+                                {
+                                    <div class="alert alert-danger" role="alert">
+                                        <ul>
+                                            @{
+                                                for (int x = 0; x < error.Length; x++)
+                                                {
+                                                    if (error[x] != null)
+                                                    {
+                                                        <li>@error[x]</li>
+                                                    }
+                                                }
+                                            }
+                                        </ul>
+                                    </div>
+                                                }
+                            }
+                            <label>Item Type Id:</label>
+                            <input type="text" class="form-control" id="newId" name="newId" value="@newID" />
+                            <label>Item Type Name:*</label>
+                            <input type="text" class="form-control" id="itypeName" name="itypeName" placeholder="Item Type" onkeypress="return validate(event, this.id)" data-toggle="popover" value="@itypeName" />
+                            <label>Description:</label>
+                            <textarea class="form-control" id="itypeDesc" name="itypeDesc" placeholder="Item Type Description" onkeypress="return validate(event,this.id)" data-toggle="popover">@itypeDesc</textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <label style="float:left">All labels with "*" are required</label>
+                    <input name="submitAdd" type="submit" class="btn btn-default" value="Submit" />
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+<!--VIEW-->
+<div class="modal fade" id="views" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-sm" role="document">
+        <form action="" method="post">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    <h4 class="modal-title">View Item Type</h4>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-12">
+                            @{
+                                var viewType = db.Query(selectType, viewId);
+                                foreach (var x in viewType)
+                                {
+                                    <label>Item Type Id: @x.strItemTypeId</label><br />
+                                    <label>Item Type Name:</label>
+                                    <input type="text" class="form-control" id="vitypeName" name="vitypeName" placeholder="Item Type" value="@x.strItemTypeName" readonly />
+                                    <label>Description:</label>
+                                    <textarea class="form-control" id="vitypeDesc" name="vitypeDesc" placeholder="Item Type Description" readonly>@x.strItemTypeDesc</textarea>
+                                }
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+<!--EDIT-->
+<div class="modal fade" id="edits" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-sm" role="document">
+        <form action="" method="post">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    <h4 class="modal-title">Edit Item Type</h4>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-12">
+                            @{
+                                if (validEdit != 0)
+                                {
+                                    <div class="alert alert-danger" role="alert">
+                                        <ul>
+                                            @{
+                                                for (int x = 0; x < error.Length; x++)
+                                                {
+                                                    if (errorEdit[x] != null)
+                                                    {
+                                                        <li>@errorEdit[x]</li>
+                                                    }
+                                                }
+                                            }
+                                        </ul>
+                                    </div>
+                                                }
+                            }
+                            @{
+                                viewType = db.Query(selectType, editId);
+                                foreach (var x in viewType)
+                                {
+                                    <label>Item Type Id: @x.strItemTypeId</label><br />
+                                    <label>Item Type Name:*</label>
+                                    <input type="text" class="form-control" id="eitypeName" name="eitypeName" placeholder="Item Type" onkeypress="return validate(event, this.id)" data-toggle="popover" value="@x.strItemTypeName" />
+                                    <label>Description:</label>
+                                    <textarea class="form-control" id="eitypeDesc" name="eitypeDesc" placeholder="Item Type Description" onkeypress="return validate(event,this.id)" data-toggle="popover">@x.strItemTypeDesc</textarea>
+                                }
+                            }
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <label style="float:left">All labels with "*" are required</label>
+                    <input name="submitEdit" type="submit" class="btn btn-default" value="Submit" />
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+<!--SUCCESS-->
+<div class="modal fade" id="success" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-sm" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title"><span class="success">SUCCESS</span></h4>
+            </div>
+            <div class="modal-body">
+                <p>SUCCESS!</p>
+            </div>
+        </div>
+    </div>
+</div>

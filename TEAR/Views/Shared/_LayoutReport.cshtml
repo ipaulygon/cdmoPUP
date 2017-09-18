@@ -1,0 +1,30 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <title>@ViewBag.Title</title>
+    @Styles.Render("~/Content/bootstrap.css")
+    @Styles.Render("~/Content/report.css")
+</head>
+<body>
+    <div class="row">
+        <div class="col-md-12">
+            <div class="col-md-2" style="float:left">
+                <img src="../Content/PUPLogo.png" style="width:100px;height:100px;" />
+            </div>
+            <div class="col-md-8">
+                <label>Republic of the Philippines</label><br />
+                <label>Polytechnic University of the Philippines</label><br />
+                <label>Campus Development and Maintenance Office</label><br />
+                <label>Sta. Mesa, Manila</label><br />
+            </div>
+            <div class="col-md-2"></div>
+        </div>
+    </div><hr />
+    @RenderBody()
+    <br />
+    <hr />
+    <footer>
+        <p>&copy; @DateTime.Now.Year - Reservation, Inventory and Project Monitoring System</p>
+    </footer> 
+</body>
+</html>

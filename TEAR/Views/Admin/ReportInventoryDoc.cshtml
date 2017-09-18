@@ -1,0 +1,86 @@
+﻿@using WebMatrix.Data;
+@{
+    ViewBag.Title = "Report - Inventory";
+    Layout = "~/Views/Shared/_LayoutReport.cshtml";
+    var db = Database.Open("dbConnect");
+    var viewItems = db.Query("SELECT * FROM tblItem,tblItemType WHERE strItemTypeId=strItemITypeId");
+    var viewUnits = db.Query("SELECT * FROM tblUnit");
+    var selectQty = "SELECT strItemName,strItemTypeName,strUnitName,(SUM(intDeliDQty)-IFNULL(SUM(intItemRelDQty),0)) AS totalQty " +
+        "FROM tblItem, tblUnit, tblItemType, tblItemDelDetail, tblItemRelDetail " +
+        "WHERE strItemITypeId = strItemTypeId " +
+        "AND strItemId = strItemRelDItemId AND strItemId = strDeliDItemId " +
+        "AND strUnitId = strItemRelDUnitId AND strUnitId = strDeliDUnitId " +
+        "AND strItemId = (@0)";
+    var selectDelivery = "SELECT SUM(intDeliDQty) FROM tblItemDelDetail WHERE strDeliDItemId=(@0) AND strDeliDUnitId=(@1)";
+    var selectRelease = "SELECT SUM(intItemRelDQty) FROM tblItemRelDetail WHERE strItemRelDItemId=(@0) AND strItemRelDUnitId=(@1)";
+}
+<div class="navbar navbar-default">
+    <div class="navbar-header">
+        <div class="navbar-brand">Inventory Report</div>
+    </div>
+</div>
+<hr />
+<div class="row">
+    <div class="col-md-12">
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <h1 class="panel-title">Inventory</h1>
+            </div>
+            <div class="panel-body">
+                <div class="table-responsive">
+                    <table id="tableData" class="table table-bordered table-striped">
+                        <thead>
+                            <tr>
+                                <th>Item</th>
+                                <th>Item Type</th>
+                                <th>Unit Name</th>
+                                <th>Quantity on Stock</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @{
+                                foreach (var x in viewItems)
+                                {
+                                    foreach(var y in viewUnits)
+                                    {
+                                        var stockQty = db.QueryValue(selectDelivery, x.strItemId, y.strUnitId);
+                                        var relQty = db.QueryValue(selectRelease, x.strItemId, y.strUnitId);
+                                        if (!DBNull.Value.Equals(stockQty))
+                                        {
+                                            stockQty = Convert.ToInt32(stockQty);
+                                        }
+                                        else
+                                        {
+                                            stockQty = 0;
+                                        }
+                                        if (!DBNull.Value.Equals(relQty))
+                                        {
+                                            relQty = Convert.ToInt32(relQty);
+                                        }
+                                        else
+                                        {
+                                            relQty = 0;
+                                        }
+                                        var totalQty = Convert.ToInt32(stockQty) - Convert.ToInt32(relQty);
+                                        if (totalQty != 0)
+                                        {
+                                            <tr>
+                                                @{ 
+
+                                                    <td>@x.strItemName</td>
+                                                    <td>@x.strItemTypeName</td>
+                                                    <td>@y.strUnitName</td>
+                                                    <td>@totalQty</td>
+                                                }
+                                            </tr>
+                                        }
+                                    }
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

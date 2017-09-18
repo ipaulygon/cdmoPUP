@@ -1,0 +1,416 @@
+﻿@using WebMatrix.Data;
+@{
+    ViewBag.Title = "Purchase Requisition";
+    Layout = "~/Views/Shared/_LayoutAdminTransaction.cshtml";
+    var db = Database.Open("dbConnect");
+    var view = db.Query("SELECT * FROM tblPurReqHeader,tblEmployee WHERE strEmpId=strPurReqHEmpId");
+    var viewItem = db.Query("SELECT * FROM tblItem ORDER BY strItemName");
+    var viewUnit = db.Query("SELECT * FROM tblUnit ORDER BY strUnitName");
+    var viewEmp = db.Query("SELECT * FROM tblEmployee WHERE intEmpStatus=1 ORDER BY strEmpLast");
+    var selectItemDel = "SELECT * FROM tblPurReqHeader,tblPurReqDetail,tblItem,tblUnit " +
+        "WHERE strPurReqId=(@0) AND strPurReqId=strPurReqHId AND strPurReqDItemId=strItemId AND strPuRReqDUnitId=strUnitId";
+    var count = db.QueryValue("SELECT COUNT(*) FROM tblPurReqHeader") + 1;
+    var leftPad = "SELECT CONCAT('PREQ-', LPAD((@0),4,'0'))";
+    var preqId = db.QueryValue(leftPad, count);
+    var count1 = db.QueryValue("SELECT COUNT(*) FROM tblItemDelHeader") + 1;
+    var leftPad1 = "SELECT CONCAT('DELI-', LPAD((@0),4,'0'))";
+    var delId = db.QueryValue(leftPad1, count1);
+    var editId = Request["editId"];
+    var valid = 0;
+    var validEdit = 0;
+    string[] error = new string[10];
+    string[] errorEdit = new string[10];
+    var viewItemDel = db.Query(selectItemDel, editId);
+    var insertH = "INSERT INTO tblPurReqHeader VALUES(@0,@1,@2,@3)";
+    var insertD = "INSERT INTO tblPurReqDetail(strPurReqHId,strPurReqDItemId,strPurReqDUnitId,intPurReqDQty) VALUES(@0,@1,@2,@3)";
+    var insertH1 = "INSERT INTO tblItemDelHeader VALUES(@0,@1,@2,@3,@4)";
+    var insertD1 = "INSERT INTO tblItemDelDetail(strDeliHId,strDeliDItemId,strDeliDUnitId,intDeliDQty) VALUES(@0,@1,@2,@3)";
+    if (editId != null)
+    {
+        <script>
+            $(document).ready(function () {
+                $("#edits").modal();
+            });
+        </script>
+    }
+    <script>
+        var itemId = [];
+        var itemName = [];
+        var unitId = [];
+        var unitName = [];
+    </script>
+    foreach (var x in viewItem)
+    {
+        <script>
+            itemId.push("@x.strItemId");
+            itemName.push("@x.strItemName");
+        </script>
+    }
+    foreach (var x in viewUnit)
+    {
+        <script>
+            unitId.push("@x.strUnitId");
+            unitName.push("@x.strUnitName");
+        </script>
+    }
+    if (IsPost)
+    {
+        if (Request.Form["submitAdd"] != null)
+        {
+            var empReq = Request["emp"];
+            string[] itemName = Request.Form.GetValues("purItem");
+            string[] unitName = Request.Form.GetValues("purUnit");
+            string[] itemQty = Request.Form.GetValues("purQty");
+            if (empReq.IsEmpty())
+            {
+                valid++; error[0] = "Employee is required";
+            }
+            if (valid == 0)
+            {
+                db.Execute(insertH, preqId, empReq, DateTime.Now.ToString(), 1);
+                if (itemName != null)
+                {
+                    for (int x = 0; x < itemQty.Length; x++)
+                    {
+                        if (itemQty[x] != "")
+                        {
+                            db.Execute(insertD, preqId, itemName[x], unitName[x], itemQty[x]);
+                        }
+                    }
+                }
+                <script>
+                    var purId = "@preqId";
+                    $(document).ready(function () {
+                        $("#edits").modal('hide');
+                        $("#success").modal({ backdrop: "static" });
+                        setTimeout(function () {
+                            $("#success").hide();
+                            window.open("../Admin/PDFPurReq?purId=" + purId);
+                            window.location.href = "../Admin/PurchaseRequisition"
+                        }, 2000);
+                    });
+                </script>
+            }
+            else
+            {
+                <script>
+                    $(document).ready(function () {
+                        $("#edits").modal('hide');
+                        $("#add1").modal();
+                    });
+                </script>
+            }
+        }
+        if (Request.Form["submitEdit"] != null)
+        {
+            var dEmp = Request["demp"];
+            var dNo = Request["dNo"];
+            string[] delItem = Request.Form.GetValues("dItem");
+            string[] delUnit = Request.Form.GetValues("dUnit");
+            string[] delQty = Request.Form.GetValues("dItemQty");
+            if (dNo.IsEmpty())
+            {
+                validEdit++; errorEdit[0] = "Delivery Number is required";
+            }
+            if (validEdit == 0)
+            {
+                db.Execute(insertH1, delId, dNo, editId, dEmp, DateTime.Now);
+                for (int x = 0; x < delQty.Length; x++)
+                {
+                    if (delQty[x] != "")
+                    {
+                        db.Execute(insertD1, delId, delItem[x], delUnit[x], delQty[x]);
+                    }
+                }
+                <script>
+                    $(document).ready(function () {
+                        $("#edits").modal('hide');
+                        $("#success").modal({ backdrop: "static" });
+                        setTimeout(function () {
+                            $("#success").hide();
+                            window.location.href = "../Admin/PurchaseRequisition";
+                        }, 2000);
+                    });
+                </script>
+            }
+            else
+            {
+                <script>
+                    $(document).ready(function () {
+                        $("#edits").modal();
+                    });
+                </script>
+            }
+        }
+    }
+    <script>
+        $(document).ready(function () {
+            $('#tableData').DataTable();
+        });
+        function validate(event, idx) {
+            var char = String.fromCharCode(event.which);
+            var patt = /[\d`~!#$%^&*()_+={}|:";@@'<>,.?\\//\[\]]/;
+            var res = patt.test(char);
+            if (res) {
+                $('#' + idx + '').popover('show');
+                return false;
+            }
+            else {
+                $('#' + idx + '').popover('hide');
+            }
+        }
+        $(document).on("click", "#view", function () {
+            var purId = $(this).data("id");
+            window.open("../Admin/PDFPurReq?purId=" + purId);
+        });
+        $(document).on("click", "#edit", function () {
+            var editId = $(this).data("id");
+            window.location.href = "../Admin/PurchaseRequisition?editId=" + editId;
+        });
+        function addReq() {
+            var table = document.getElementById("tableRequest");
+            var x = table.rows.length;
+            var row = table.insertRow(x);
+            var cell1 = row.insertCell(0);
+            var cell2 = row.insertCell(1);
+            var cell3 = row.insertCell(2);
+            var cell4 = row.insertCell(3);
+            cell1.innerHTML = '<select class="btn btn-default dropdown-toggle"></select>';
+            cell2.innerHTML = '<select class="btn btn-default dropdown-toggle"></select>';
+            cell3.innerHTML = '<input type="number" class="form-control" placeholder="1-99" min="0" max="100" step="1"/>';
+            cell4.innerHTML = '<a href="#" type="button" class="btn btn-danger" onclick="remove(this)"><span class="glyphicon glyphicon-remove-sign"></span></a>';
+            table.rows[x].cells[0].children[0].setAttribute("id", "purItem");
+            table.rows[x].cells[0].children[0].setAttribute("name", "purItem");
+            table.rows[x].cells[1].children[0].setAttribute("id", "purUnit");
+            table.rows[x].cells[1].children[0].setAttribute("name", "purUnit");
+            table.rows[x].cells[1].children[0].setAttribute("id", "purUnit");
+            table.rows[x].cells[2].children[0].setAttribute("name", "purQty");
+            table.rows[x].cells[2].children[0].setAttribute("id", "purQty");
+            for (var y = 0; y < itemId.length; y++) {
+                var option = document.createElement("option");
+                option.setAttribute("value", itemId[y]);
+                option.text = itemName[y];
+                table.rows[x].cells[0].children[0].appendChild(option);
+            }
+            for (var y = 0; y < unitId.length; y++) {
+                var option = document.createElement("option");
+                option.setAttribute("value", unitId[y]);
+                option.text = unitName[y];
+                table.rows[x].cells[1].children[0].appendChild(option);
+            }
+        }
+        function remove(row) {
+            var i = row.parentNode.parentNode.rowIndex;
+            document.getElementById("tableRequest").deleteRow(i);
+        }
+    </script>
+}
+<div class="navbar navbar-default">
+    <div class="navbar-header">
+        <div class="navbar-brand">Inventory</div>
+        <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#myNavbar1">
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+        </button>
+    </div>
+    <div class="collapse navbar-collapse" id="myNavbar1">
+        <ul class="nav navbar-nav navbar-right">
+            <li><a href="../Admin/ItemRequisition">Item Request</a></li>
+            <li class="active"><a href="../Admin/PurchaseRequisition">Purchase Request</a></li>
+        </ul>
+    </div>
+</div>
+<hr />
+<div class="row">
+    <div class="col-md-12" style="margin-bottom: 1%">
+        <div class="col-md-2"><button class="btn btn-default" data-toggle="modal" data-target="#add1">Add Purchase Request</button></div>
+    </div>
+    <div class="col-md-12">
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <h1 class="panel-title">Purchase Requests</h1>
+            </div>
+            <div class="panel-body">
+                <div class="table-responsive">
+                    <table id="tableData" class="table dataTable no-footer" role="grid">
+                        <thead>
+                            <tr>
+                                <th>Purchase Request Id</th>
+                                <th>Date Requested</th>
+                                <th>Employee Requested</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @{
+                                foreach (var x in view)
+                                {
+                                    <tr>
+                                        <td>@x.strPurReqId</td>
+                                        <td>@x.dtmPurReqHDate.ToString()</td>
+                                        <td>@x.strEmpFirst @x.strEmpMiddle @x.strEmpLast</td>
+                                        <td>
+                                            <button class="btn btn-success" id="edit" name="edit" data-id="@x.strPurReqId"><span class="glyphicon glyphicon-download-alt"></span></button>
+                                            <button class="btn btn-primary" id="view" name="view" data-id="@x.strPurReqId"><span class="glyphicon glyphicon-eye-open"></span></button>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="modal fade" id="add1" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg" role="document">
+        <form action="" method="post">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    <h4 class="modal-title">Purchase Request</h4>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-12">
+                            @{
+                                if (valid != 0)
+                                {
+                                    <div class="alert alert-danger" role="alert">
+                                        <ul>
+                                            @{
+                                                for (int x = 0; x < error.Length; x++)
+                                                {
+                                                    if (error[x] != null)
+                                                    {
+                                                        <li>@error[x]</li>
+                                                    }
+                                                }
+                                            }
+                                        </ul>
+                                    </div>
+                                                }
+                            }
+                            <label>Employee Requested:</label><br />
+                            <select name="emp" id="emp" class="btn btn-default dropdown-toggle" selected="">
+                                @{
+                                    foreach (var x in viewEmp)
+                                    {
+                                        <option value="@x.strEmpId">@x.strEmpFirst @x.strEmpMiddle @x.strEmpLast</option>
+                                    }
+                                }
+                            </select><br /><br />
+                            <a href="#" type="button" class="btn btn-warning" style="float:right" id="addReq" name="addReq" onclick="addReq()"><span class="glyphicon glyphicon-plus-sign"></span></a>
+                            <div class="table-responsive">
+                                <table id="tableRequest" class="table dataTable no-footer" role="grid">
+                                    <thead>
+                                        <tr>
+                                            <th>Item Name</th>
+                                            <th>Unit</th>
+                                            <th>Qty.</th>
+                                            <th>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <label style="float:left">All labels with "*" are required</label>
+                    <input name="submitAdd" type="submit" class="btn btn-default" value="Submit" />
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+<div class="modal fade" id="edits" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-md" role="document">
+        <form action="" method="post">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    <h4 class="modal-title">Add Delivery</h4>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-12">
+                            @{
+                                if (validEdit != 0)
+                                {
+                                    <div class="alert alert-danger" role="alert">
+                                        <ul>
+                                            @{
+                                                for (int x = 0; x < errorEdit.Length; x++)
+                                                {
+                                                    if (errorEdit[x] != null)
+                                                    {
+                                                        <li>@errorEdit[x]</li>
+                                                    }
+                                                }
+                                            }
+                                        </ul>
+                                    </div>
+                                                }
+                            }
+                            <label>Purchase Request Id:</label><span> @editId</span><br />
+                            <label>Employee Accepted:</label><br />
+                            <select name="demp" id="demp" class="btn btn-default dropdown-toggle" selected="">
+                                @{
+                                    foreach (var x in viewEmp)
+                                    {
+                                        <option value="@x.strEmpId">@x.strEmpFirst @x.strEmpMiddle @x.strEmpLast</option>
+                                    }
+                                }
+                            </select><br /><br />
+                            <label>Supplier and Delivery No.:</label><br />
+                            <input type="text" class="form-control" id="dNo" name="dNo" placeholder="Coca-Cola - DEL2z031"/>
+                            <div class="table-responsive">
+                                <table id="tableDelivery" class="table dataTable no-footer" role="grid">
+                                    <thead>
+                                        <tr>
+                                            <th>Item Name</th>
+                                            <th>Unit</th>
+                                            <th>Quantity</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @{ 
+                                            foreach(var x in viewItemDel)
+                                            {
+                                                <tr>
+                                                    <td><input class="form-control hiddens" id="dItem" name="dItem" value="@x.strItemId"/><label>@x.strItemName</label></td>
+                                                    <td><input class="form-control hiddens" id="dUnit" name="dUnit" value="@x.strUnitId"/><label>@x.strUnitName</label></td>
+                                                    <td><input type="number" class="form-control" name="ditemQty" id="ditemQty" min="1" step="1" /></td>
+                                                </tr>
+                                            }
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <label style="float:left">All labels with "*" are required</label>
+                    <input name="submitEdit" type="submit" class="btn btn-default" value="Submit" />
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+<!--SUCCESS-->
+<div class="modal fade" id="success" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-sm" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title"><span class="success">SUCCESS</span></h4>
+            </div>
+            <div class="modal-body">
+                <p>SUCCESS!</p>
+            </div>
+        </div>
+    </div>
+</div>

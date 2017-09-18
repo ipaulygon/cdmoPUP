@@ -1,0 +1,70 @@
+﻿@using WebMatrix.Data;
+@{
+    ViewBag.Title = "PurReq-" + DateTime.Now;
+    Layout = "~/Views/Shared/_LayoutReport.cshtml";
+    var db = Database.Open("dbConnect");
+    var purReqId = Request["purId"];
+    var selectPurReq = "SELECT * FROM tblPurReqHeader,tblPurReqDetail,tblItem,tblUnit " + 
+        "WHERE strPurReqId=(@0) AND strPurReqhId=strPurReqId AND strPurReqDItemId=strItemId AND strPurReqDUnitId=strUnitId " + 
+        "ORDER BY strItemName";
+    var selectEmpReq = "SELECT * FROM tblPurReqHeader,tblEmployee WHERE strPurReqHEmpId=strEmpId AND strPurReqId=(@0)";
+    var viewPurReq = db.Query(selectPurReq, purReqId);
+    var viewEmpReq = db.Query(selectEmpReq, purReqId);
+}
+<div>
+    <label>Department: </label><br /><br />
+    <label>Section: </label><br /><br />
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Item Description</th>
+                <th>Unit of Issue</th>
+                <th>Quantity</th>
+                <th>Estimated Unit Cost</th>
+                <th>Estimated Cost</th>
+            </tr>
+        </thead>
+        <tbody>
+            @{
+                foreach (var x in viewPurReq)
+                {
+                    <tr>
+                        <td>@x.strItemName</td>
+                        <td>@x.strUnitName</td>
+                        <td>@x.intPurReqDQty</td>
+                        <td>                          </td>
+                        <td>                          </td>
+                    </tr>
+                }
+            }
+        </tbody>
+    </table>
+    <label>Purpose: For office use.</label><br /><br />
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th></th>
+                <th>Requested by:</th>
+                <th>Approved by:</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Signature:          </td>
+                <td>                    </td>
+                <td>                    </td>
+            </tr>
+            <tr>
+                <td>Printed Name:       </td>
+                <td>                    </td>
+                <td>                    </td>
+            </tr>
+            <tr>
+                <td>Designation:        </td>
+                <td>                    </td>
+                <td>                    </td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+

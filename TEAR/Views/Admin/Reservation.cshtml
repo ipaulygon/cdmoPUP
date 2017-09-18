@@ -1,0 +1,347 @@
+﻿@using WebMatrix.Data;
+@{
+    ViewBag.Title = "Reservation";
+    Layout = "~/Views/Shared/_LayoutAdminTransaction.cshtml";
+    var db = Database.Open("dbConnect");
+    var view = db.Query("SELECT * FROM tblReservation ORDER BY strResId");
+    var count = db.QueryValue("SELECT COUNT(*) FROM tblReservation") + 1;
+    var leftPad = "SELECT CONCAT('RES-', LPAD((@0),4,'0'))";
+    var resId = db.QueryValue(leftPad, count);
+    var count1 = db.QueryValue("SELECT COUNT(*) FROM tblClient") + 1;
+    var leftPad1 = "SELECT CONCAT('CLIENT-', LPAD((@0),4,'0'))";
+    var clientId = db.QueryValue(leftPad1, count1);
+    var viewOffice = db.Query("SELECT * FROM tblOffice ORDER BY strOfficeName");
+    var viewAmenity = db.Query("SELECT * FROM tblAmenity ORDER BY strAmenityName");
+    var viewClient = db.Query("SELECT * FROM tblClient ORDER BY strClientLast");
+    var listReservation = "SELECT COUNT(strResId) FROM tblReservation " +
+        "WHERE strResAmenityId=(@0) AND dateReservation=(@1) AND (timeResStart>=(@2) AND timeResEnd<=(@3))";
+    var cFirst = "";
+    var cMiddle = "";
+    var cLast = "";
+    var cContact = "";
+    var cType = 0;
+    var cOffice = "";
+    var eName = "";
+    var eVenue = "";
+    var eDate = "";
+    var eStart = "";
+    var eEnd = "";
+    var cCheck = "";
+    string[] error = new string[15];
+    var valid = 0;
+    var update = "UPDATE tblClient SET strClientContact=(@0),intClientType=(@1),strClientOfficeId=(@2) WHERE strClientId=(@3)";
+    var insertC = "INSERT INTO tblClient VALUES(@0,@1,@2,@3,@4,@5,@6)";
+    var insertE = "INSERT INTO tblReservation VALUES(@0,@1,@2,@3,@4,@5,@6,@7,@8)";
+    if (IsPost)
+    {
+        if (Request.Form["submitAdd"] != null)
+        {
+            cFirst = Request["cFirst"].Trim();
+            cMiddle = Request["cMiddle"].Trim();
+            cLast = Request["cLast"].Trim();
+            cContact = Request["cContact"].Trim();
+            cType = Convert.ToInt32(Request["cType"]);
+            cOffice = Request["cOffice"];
+            eName = Request["eName"].Trim();
+            eVenue = Request["eVenue"];
+            eDate = Request["eDate"];
+            eStart = Request["eStart"];
+            eEnd = Request["eEnd"];
+            if (cFirst.IsEmpty())
+            {
+                valid++; error[0] = "First Name is required";
+            }
+            if (cLast.IsEmpty())
+            {
+                valid++; error[1] = "Last Name is required";
+            }
+            if (cContact.IsEmpty())
+            {
+                valid++; error[2] = "Contact is required";
+            }
+            if (cType <= 0 || cType > 3)
+            {
+                valid++; error[3] = "Client type is required";
+            }
+            if (cOffice.IsEmpty())
+            {
+                valid++; error[4] = "Office is required";
+            }
+            if (eName.IsEmpty())
+            {
+                valid++; error[5] = "Event Name is required";
+            }
+            if (eVenue.IsEmpty())
+            {
+                valid++; error[6] = "Event Venue is required";
+            }
+            if (eDate.IsEmpty())
+            {
+                valid++; error[7] = "Event Date is required";
+            }
+            if (eStart.IsEmpty())
+            {
+                valid++; error[8] = "Start time is required";
+            }
+            if (eEnd.IsEmpty())
+            {
+                valid++; error[9] = "End time is required";
+            }
+            var countRes = db.QueryValue(listReservation, eVenue, eDate, eStart, eEnd);
+            if (countRes != 0)
+            {
+                valid += 1;
+                error[10] = "Overlapping time";
+            }
+            if (valid == 0)
+            {
+                foreach (var x in viewClient)
+                {
+                    var fullQuery = x.strClientFirst + x.strClientMiddle + x.strClientLast;
+                    var fullGet = cFirst + cMiddle + cLast;
+                    if (fullQuery.Equals(fullGet))
+                    {
+                        cCheck = x.strClientId;
+                    }
+                }
+                if (cCheck != "")
+                {
+                    db.Execute(update, cContact, cType, cOffice, cCheck);
+                    clientId = cCheck;
+                }
+                else
+                {
+                    db.Execute(insertC, clientId, cFirst, cMiddle, cLast, cContact, cType, cOffice);
+                }
+                db.Execute(insertE, resId, eName, eVenue, DateTime.Now.ToString(), eDate, eStart, eEnd, 1, clientId);
+                <script>
+                    $(document).ready(function () {
+                        $("#success").modal({ backdrop: "static" });
+                        setTimeout(function () {
+                            $("#success").hide();
+                            window.location.href = "../Admin/Reservation";
+                        }, 2000);
+                    });
+                </script>
+            }
+        }
+    }
+    <script>
+        var resourceList = [];
+        var resourceCols = [];
+        var eventList = [];
+    </script>
+    foreach(var x in viewAmenity)
+    {
+        <script>
+            resourceList.push({
+                id: '@x.strAmenityId',title: "@x.strAmenityName",
+            });
+        </script>
+    }
+    foreach (var x in view)
+    {
+        <script>
+            eventList.push({
+                title: "@x.strResEName",
+                start: "@x.dateReservation.ToString()" + "T" + "@x.timeResStart.ToString()",
+                end: "@x.dateReservation.ToString()" + "T" + "@x.timeResEnd.ToString()",
+                resourceId: '@x.strResAmenityId',
+            });
+        </script>
+    }
+    <script>
+        $(document).ready(function () {
+            $('#calendar').fullCalendar({
+                header: {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: 'month,timelineDay,agendaWeek,listMonth',
+                },
+                defaultView: 'month',
+                views:{
+                    agendaWeek: {
+                        groupByResource: true,
+                    }
+                },
+                height: 650,
+                events: eventList,
+                resources: resourceList,
+            });
+        });
+        function validate(event, idx) {
+            var char = String.fromCharCode(event.which);
+            var patt = /[`~!#$%^&*_+={}|:";@@<>?\\//\[\]]/;
+            var res = patt.test(char);
+            if (res) {
+                $('#' + idx + '').popover('show');
+                return false;
+            }
+            else {
+                $('#' + idx + '').popover('hide');
+            }
+        }
+    </script>
+}
+<div class="navbar navbar-default">
+    <div class="navbar-header">
+        <div class="navbar-brand">Reservation</div>
+    </div>
+</div>
+<hr />
+<div class="row">
+    <div class="col-md-12" style="margin-bottom: 1%">
+        <div class="col-md-2"><button class="btn btn-default" data-toggle="modal" data-target="#add1">Add Reservation</button></div>
+    </div>
+    <div class="col-md-12">
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <h1 class="panel-title">Schedules</h1>
+            </div>
+            <div class="panel-body">
+                <div class="row">
+                    <div class="col-md-12">
+                        <div id="calendar"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="modal fade" id="add1" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg" role="document">
+        <form action="" method="post">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    <h4 class="modal-title">Add Reservation</h4>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-12">
+                            @{
+                                if (valid != 0)
+                                {
+                                    <div class="alert alert-danger" role="alert">
+                                        <ul>
+                                            @{
+                                                for (int x = 0; x < error.Length; x++)
+                                                {
+                                                    if (error[x] != null)
+                                                    {
+                                                        <li>@error[x]</li>
+                                                    }
+                                                }
+                                            }
+                                        </ul>
+                                    </div>
+                                                }
+                            }
+                            <ul class="nav nav-tabs" role="tablist">
+                                <li class="active"><a href="#client" role="tab" data-toggle="tab">Client Information</a></li>
+                                <li><a href="#reserve" role="tab" data-toggle="tab">Reservation</a></li>
+                            </ul>
+                            <div class="tab-content">
+                                <div role="tabpanel" class="tab-pane fade in active" id="client">
+                                    <br /><br />
+                                    <div class="col-md-4">
+                                        <label>First Name:*</label><br />
+                                        <input type="text" class="form-control" id="cFirst" name="cFirst" placeholder="First Name" onkeypress="return validate(event, this.id)" data-toggle="popover" value="@cFirst" />
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label>Middle Name:</label><br />
+                                        <input type="text" class="form-control" id="cMiddle" name="cMiddle" placeholder="Middle Name" onkeypress="return validate(event, this.id)" data-toggle="popover" value="@cMiddle" />
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label>Last Name:*</label><br />
+                                        <input type="text" class="form-control" id="cLast" name="cLast" placeholder="Last Name" onkeypress="return validate(event, this.id)" data-toggle="popover" value="@cLast" />
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label>Contact Number:*</label><br />
+                                        <input type="text" class="form-control" id="cContact" name="cContact" placeholder="Contact Number" onkeypress="return contact(event, this.id)" data-content="Please input a valid contact number i.e(0905-****-***)" data-toggle="popover" value="@cContact" />
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label>Client Type:*</label><br />
+                                        <div class="radio">
+                                            <label><input type="radio" name="cType" id="1" value="1" />Student</label>
+                                            <label><input type="radio" name="cType" id="2" value="2" />Administrative Staff</label>
+                                            <label><input type="radio" name="cType" id="3" value="3" />Faculty</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-12">
+                                        <label>Office:*</label><br />
+                                        <select name="cOffice" id="cOffice" class="btn btn-default dropdown-toggle" selected="">
+                                            @{
+                                                foreach (var x in viewOffice)
+                                                {
+                                                    <option value="@x.strOfficeId">@x.strOfficeName</option>
+                                                }
+                                            }
+                                        </select><br /><br />
+                                    </div>
+                                    <script>
+                                        document.getElementById("@cType").checked = true;
+                                        document.getElementById("cOffice").value = "@cOffice";
+                                    </script>
+                                </div>
+                                <div role="tabpanel" class="tab-pane fade in" id="reserve">
+                                    <br /><br />
+                                    <!--NAME & VENUE-->
+                                    <div class="col-md-6">
+                                        <label>Event Name:*</label><br />
+                                        <input type="text" class="form-control" id="eName" name="eName" placeholder="Event Name" onkeypress="return validate(event, this.id)" data-toggle="popover" value="@eName" />
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label>Reservation Venue:*</label><br />
+                                        <select name="eVenue" id="eVenue" class="btn btn-default dropdown-toggle" selected="">
+                                            @{
+                                                foreach (var x in viewAmenity)
+                                                {
+                                                    <option value="@x.strAmenityId">@x.strAmenityName</option>
+                                                }
+                                            }
+                                        </select><br /><br />
+                                    </div>
+                                    <div class="col-md-12"></div>
+                                    <!--DATE-->
+                                    <div class="col-md-4">
+                                        <label>Event Date:*</label><br />
+                                        <input type="date" class="form-control" id="eDate" name="eDate" min="@DateTime.Today.ToString("d")" max="" value="@eDate" />
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label>Event Start:*</label><br />
+                                        <input type="time" class="form-control" id="eStart" name="eStart" min="07:00" max="20:00" step="1800" value="@eStart" />
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label>Event End:*</label><br />
+                                        <input type="time" class="form-control" id="eEnd" name="eEnd" min="07:00" max="23:00" step="1800" value="@eEnd" />
+                                    </div>
+                                </div>
+                            </div>
+                            <script>
+                                document.getElementById("eVenue").value = "@eVenue";
+                            </script>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <label style="float:left">All labels with "*" are required</label>
+                    <input name="submitAdd" type="submit" class="btn btn-default" value="Submit" />
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+<!--SUCCESS-->
+<div class="modal fade" id="success" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-sm" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title"><span class="success">SUCCESS</span></h4>
+            </div>
+            <div class="modal-body">
+                <p>SUCCESS!</p>
+            </div>
+        </div>
+    </div>
+</div>

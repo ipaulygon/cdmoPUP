@@ -1,0 +1,614 @@
+﻿@using WebMatrix.Data;
+@{
+    ViewBag.Title = "Project";
+    Layout = "~/Views/Shared/_LayoutAdminTransaction.cshtml";
+    var db = Database.Open("dbConnect");
+    var view = db.Query("SELECT * FROM tblProjReqH,tblProjReqD,tblClient,tblService,tblOffice " +
+        "WHERE strProjReqDReqHId=strProjReqHId AND strProjReqDServId=strServId AND strProjReqHClientId=strClientId AND strClientOfficeId=strOfficeId " +
+        "ORDER BY dtmProjReqHDateRec,strProjReqDId");
+    var selectProj = "SELECT * FROM tblProjReqH,tblProjReqD,tblClient,tblService,tblOffice " +
+        "WHERE strProjReqDReqHId=strProjReqHId AND strProjReqDServId=strServId AND strProjReqHClientId=strClientId AND strClientOfficeId=strOfficeId AND strProjReqDId=(@0) " +
+        "ORDER BY dtmProjReqHDateRec,strProjReqDId";
+    var selectHeader = "SELECT * FROM tblProjectHeader WHERE strProjHReqId=(@0)";
+    var selectEmpSkill = "SELECT * FROM tblEmpSkill,tblJobSkill " +
+        "WHERE strEmpSEmpId=(@0) AND strEmpSJobSId=strJobSId ORDER BY strJobSName";
+    var selectDetail = "SELECT * FROM tblProjectDetail WHERE strProjDProjHId=(@0) ORDER BY intProjDId";
+    var selectProjAssign = "SELECT * FROM tblProjAssignment,tblEmployee WHERE strEmpId=strProjAEmpId AND strProjAProjHId=(@0)";
+    var selCountProj = "SELECT COUNT(*) FROM tblProjectHeader WHERE strProjHReqId=(@0)";
+    var viewSec = db.Query("SELECT * FROM tblSection ORDER BY strSecName");
+    var viewEmp = db.Query("SELECT * FROM tblEmployee WHERE intEmpStatus=1 ORDER BY strEmpLast");
+    var viewItem = db.Query("SELECT * FROM tblItem ORDER BY strItemName");
+    var viewUnit = db.Query("SELECT * FROM tblUnit ORDER BY strUnitName");
+    var viewId = Request["viewId"];
+    var editId = Request["editId"];
+    var startId = Request["startId"];
+    var endId = Request["endId"];
+    var status = "";
+    string[] error = new string[5];
+    string[] errorEdit = new string[5];
+    var validEdit = 0;
+    var valid = 0;
+    var viewProj = db.Query(selectProj, editId);
+    var viewHeader = db.Query(selectHeader, editId);
+    var viewProjItem = db.Query(selectDetail, editId);
+    var viewProjEmp = db.Query(selectProjAssign, editId);
+    var countProj = db.QueryValue(selCountProj, editId);
+    var countStart = db.QueryValue(selCountProj, startId);
+    var insertStart = "INSERT INTO tblProjectHeader(strProjHReqId,strProjHSecId,dtmProjHStart,intProjHPriority) VALUES(@0,@1,@2,@3)";
+    var updateStart = "UPDATE tblProjReqD SET intProjReqDStatus=(@0) WHERE strProjReqDId=(@1)";
+    var updateStart1 = "UPDATE tblProjectHeader SET dtmProjHStart=(@0) WHERE strProjHReqId=(@1)";
+    var updateEnd = "UPDATE tblProjectHeader SET dtmProjHEnd=(@0) WHERE strProjHReqId=(@1)";
+    if (viewId != null)
+    {
+        <script>
+            $(document).ready(function () {
+                $("#views").modal();
+            });
+        </script>
+    }
+    if (editId != null)
+    {
+        <script>
+            $(document).ready(function () {
+                $("#edits").modal();
+            });
+        </script>
+    }
+    if (startId != null)
+    {
+        if (countStart == 0)
+        {
+            db.Execute(insertStart, startId, "SEC-0001", DateTime.Now.ToString(), 1);
+        }
+        else
+        {
+            db.Execute(updateStart1, DateTime.Now.ToString(), startId);
+        }
+        db.Execute(updateStart, 2, startId);
+        <script>
+            $(document).ready(function () {
+                $("#edits").modal('hide');
+                $("#success").modal({ backdrop: "static" });
+                setTimeout(function () {
+                    $("#success").hide();
+                    window.location.href = "../Admin/Project";
+                }, 2000);
+            });
+        </script>
+    }
+    if (endId != null)
+    {
+        db.Execute(updateEnd, DateTime.Now.ToString(), endId);
+        db.Execute(updateStart, 3, endId);
+        <script>
+            $(document).ready(function () {
+                $("#edits").modal('hide');
+                $("#success").modal({ backdrop: "static" });
+                setTimeout(function () {
+                    $("#success").hide();
+                    window.location.href = "../Admin/Project";
+                }, 2000);
+            });
+        </script>
+    }
+    <script>
+    var itemId = [];
+    var itemName = [];
+    var unitId = [];
+    var unitName = [];
+    </script>
+    foreach (var x in viewItem)
+    {
+        <script>
+            itemId.push("@x.strItemId");
+            itemName.push("@x.strItemName");
+        </script>
+    }
+    foreach (var x in viewUnit)
+    {
+        <script>
+            unitId.push("@x.strUnitId");
+            unitName.push("@x.strUnitName");
+        </script>
+    }
+    if (IsPost)
+    {
+        if (Request.Form["submitAdd"] != null)
+        {
+            var pSec = Request["pSec"];
+            var pPrio = Convert.ToInt32(Request["pPrio"]);
+            string[] pItems = Request.Form.GetValues("projItem");
+            string[] pUnits = Request.Form.GetValues("projUnit");
+            string[] pQtys = Request.Form.GetValues("projQty");
+            string[] pEmps = Request.Form.GetValues("pEmps");
+            if (pSec.IsEmpty())
+            {
+                valid++; error[0] = "Section is required";
+            }
+            if (valid == 0)
+            {
+                var insertH = "INSERT INTO tblProjectHeader(strProjHReqId,strProjHSecId,intProjHPriority) VALUES(@0,@1,@2)";
+                var updateH = "UPDATE tblProjectHeader SET strProjHSecId=(@0),intProjHPriority=(@1) WHERE strProjHReqId=(@2)";
+                if (countProj == 0)
+                {
+                    db.Execute(insertH, editId, pSec, pPrio);
+                }else
+                {
+                    db.Execute(updateH, pSec, pPrio, editId);
+                }
+                var deleteI = "DELETE FROM tblProjectDetail WHERE strProjDProjHId=(@0)";
+                var deleteE = "DELETE FROM tblProjAssignment WHERE strProjAProjHId=(@0)";
+                var insertI = "INSERT INTO tblProjectDetail(strProjDProjHId,strProjDItemId,strProjDUnitId,intProjDQty) VALUES(@0,@1,@2,@3)";
+                var insertE = "INSERT INTO tblProjAssignment VALUES(@0,@1)";
+                db.Execute(deleteI, editId);
+                db.Execute(deleteE, editId);
+                if (pItems != null)
+                {
+                    for(int x = 0; x < pItems.Length; x++)
+                    {
+                        db.Execute(insertI, editId, pItems[x], pUnits[x], pQtys[x]);
+                    }
+                }
+                if (pEmps != null)
+                {
+                    for (int x = 0; x < pEmps.Length; x++)
+                    {
+                        db.Execute(insertE, editId, pEmps[x]);
+                    }
+                }
+                <script>
+                    $(document).ready(function () {
+                        $("#edits").modal('hide');
+                        $("#success").modal({ backdrop: "static" });
+                        setTimeout(function () {
+                            $("#success").hide();
+                            window.location.href = "../Admin/Project";
+                        }, 2000);
+                    });
+                </script>
+            }
+            else
+            {
+                <script>
+                    $(document).ready(function () {
+                        $("#edits").modal();
+                    });
+                </script>
+            }
+        }
+    }
+    <script>
+        $(document).ready(function () {
+            $('#tableData').DataTable();
+            $('#tableEmp').DataTable();
+        });
+        function validate(event, idx) {
+            var char = String.fromCharCode(event.which);
+            var patt = /[\d`~!#$%^&*()_+={}|:";@@'<>,.?\\//\[\]]/;
+            var res = patt.test(char);
+            if (res) {
+                $('#' + idx + '').popover('show');
+                return false;
+            }
+            else {
+                $('#' + idx + '').popover('hide');
+            }
+        }
+        $(document).on("click", "#view", function () {
+            var viewId = $(this).data("id");
+            window.open("../Admin/PDFProj?viewId=" + viewId);
+        });
+        $(document).on("click", "#edit", function () {
+            var editId = $(this).data("id");
+            window.location.href = "../Admin/Project?editId=" + editId;
+        });
+        $(document).on("click", "#start", function () {
+            var startId = $(this).data("id");
+            window.location.href = "../Admin/Project?startId=" + startId;
+        });
+        $(document).on("click", "#end", function () {
+            var endId = $(this).data("id");
+            window.location.href = "../Admin/Project?endId=" + endId;
+        });
+        function addReq() {
+            var table = document.getElementById("tableRequest");
+            var x = table.rows.length;
+            var row = table.insertRow(x);
+            var cell1 = row.insertCell(0);
+            var cell2 = row.insertCell(1);
+            var cell3 = row.insertCell(2);
+            var cell4 = row.insertCell(3);
+            cell1.innerHTML = '<select class="btn btn-default dropdown-toggle"></select>';
+            cell2.innerHTML = '<select class="btn btn-default dropdown-toggle"></select>';
+            cell3.innerHTML = '<input type="number" class="form-control" placeholder="1-99" min="0" max="100" step="1"/>';
+            cell4.innerHTML = '<a href="#" type="button" class="btn btn-danger" onclick="remove(this)"><span class="glyphicon glyphicon-remove-sign"></span></a>';
+            table.rows[x].cells[0].children[0].setAttribute("id", "projItem");
+            table.rows[x].cells[0].children[0].setAttribute("name", "projItem");
+            table.rows[x].cells[1].children[0].setAttribute("id", "projUnit");
+            table.rows[x].cells[1].children[0].setAttribute("name", "projUnit");
+            table.rows[x].cells[1].children[0].setAttribute("id", "projUnit");
+            table.rows[x].cells[2].children[0].setAttribute("name", "projQty");
+            table.rows[x].cells[2].children[0].setAttribute("id", "projQty");
+            for (var y = 0; y < itemId.length; y++) {
+                var option = document.createElement("option");
+                option.setAttribute("value", itemId[y]);
+                option.text = itemName[y];
+                table.rows[x].cells[0].children[0].appendChild(option);
+            }
+            for (var y = 0; y < unitId.length; y++) {
+                var option = document.createElement("option");
+                option.setAttribute("value", unitId[y]);
+                option.text = unitName[y];
+                table.rows[x].cells[1].children[0].appendChild(option);
+            }
+        }
+        function remove(row) {
+            var i = row.parentNode.parentNode.rowIndex;
+            document.getElementById("tableRequest").deleteRow(i);
+        }
+        function addTo(chk, title,idx) {
+            var table = document.getElementById("tableEmpName");
+            if (chk.checked) {
+                var x = table.rows.length;
+                var row = table.insertRow(x);
+                var cell1 = row.insertCell(0)
+                cell1.innerHTML = '<input class="form-control" readonly/>';
+                table.rows[x].cells[0].children[0].setAttribute("value", title);
+                table.rows[x].cells[0].children[0].setAttribute("id", idx);
+                table.rows[x].setAttribute("id", idx);
+            }
+            else {
+                var x = table.rows.namedItem(idx);
+                table.deleteRow(x.rowIndex);
+            }
+        }
+    </script>
+}
+<div class="navbar navbar-default">
+    <div class="navbar-header">
+        <div class="navbar-brand">Project Design</div>
+        <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#myNavbar1">
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+        </button>
+    </div>
+    <div class="collapse navbar-collapse" id="myNavbar1">
+        <ul class="nav navbar-nav navbar-right">
+            <li><a href="../Admin/ProjectRequest">Project Requests</a></li>
+            <li class="active"><a href="../Admin/Project">Projects</a></li>
+        </ul>
+    </div>
+</div>
+<hr />
+<div class="row">
+    <div class="col-md-12">
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <h1 class="panel-title">Projects</h1>
+            </div>
+            <div class="panel-body">
+                <div class="table-responsive">
+                    <table id="tableData" class="table dataTable no-footer" role="grid">
+                        <thead>
+                            <tr>
+                                <th>Office</th>
+                                <th>Service</th>
+                                <th>Description</th>
+                                <th>Status</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @{
+                                foreach (var x in view)
+                                {
+                                    if (x.intProjReqDStatus == 1)
+                                    {
+                                        status = "Pending";
+                                        <tr>
+                                            <td>@x.strOfficeName</td>
+                                            <td>@x.strServName</td>
+                                            <td>@x.strProjReqDDesc</td>
+                                            <td>@status</td>
+                                            <td>
+                                                <button class="btn btn-success" id="edit" name="edit" data-id="@x.strProjReqDId">View</button>
+                                                <button class="btn btn-warning" id="start" name="start" data-id="@x.strProjReqDId">Start</button>
+                                            </td>
+                                        </tr>
+                                    }
+                                    else if (x.intProjReqDStatus == 2)
+                                    {
+                                        status = "On Going";
+                                        <tr>
+                                            <td>@x.strOfficeName</td>
+                                            <td>@x.strServName</td>
+                                            <td>@x.strProjReqDDesc</td>
+                                            <td>@status</td>
+                                            <td>
+                                                <button class="btn btn-success" id="edit" name="edit" data-id="@x.strProjReqDId">View</button>
+                                                <button class="btn btn-danger" id="end" name="end" data-id="@x.strProjReqDId">End</button>
+                                            </td>
+                                        </tr>
+                                    }
+                                    else
+                                    {
+                                        status = "Finished";
+                                        <tr>
+                                            <td>@x.strOfficeName</td>
+                                            <td>@x.strServName</td>
+                                            <td>@x.strProjReqDDesc</td>
+                                            <td>@status</td>
+                                            <td>
+                                                <button class="btn btn-success" name="view" id="view" data-id="@x.strProjReqDId"><span class="glyphicon glyphicon-eye-open"></span></button>
+                                            </td>
+                                        </tr>
+                                    }
+
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!--ADD-->
+<div class="modal fade" id="edits" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg" role="document">
+        <form action="" method="post">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    <h4 class="modal-title">View Projects</h4>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-12">
+                            @{
+                                if (valid != 0)
+                                {
+                                    <div class="alert alert-danger" role="alert">
+                                        <ul>
+                                            @{
+                                                for (int x = 0; x < error.Length; x++)
+                                                {
+                                                    if (error[x] != null)
+                                                    {
+                                                        <li>@error[x]</li>
+                                                    }
+                                                }
+                                            }
+                                        </ul>
+                                    </div>
+                                                }
+                            }
+                            <ul class="nav nav-tabs" role="tablist">
+                                <li class="active"><a href="#overview" role="tab" data-toggle="tab">Project Overview</a></li>
+                                <li class="dropdown">
+                                    <a href="#" class="dropdown-toggle" id="detailDrop" data-toggle="dropdown" aria-controls="detailContents">Project Details<span class="caret"></span></a>
+                                    <ul class="dropdown-menu" id="detailContents">
+                                        <li>
+                                            <a href="#items" id="detailContents1" data-toggle="tab">Item planning</a>
+                                        </li>
+                                        <li>
+                                            <a href="#works" id="detailContents2" data-toggle="tab">Work planning</a>
+                                        </li>
+                                    </ul>
+                                </li>
+                            </ul>
+                            <div class="tab-content">
+                                <div role="tabpanel" class="tab-pane active" id="overview">
+                                    <br />
+                                    <div class="row">
+                                        <div class="col-md-12">
+                                            <div class="col-md-6">
+                                                @{
+                                                    foreach (var x in viewProj)
+                                                    {
+                                                        <label>Requested by:</label> <span>@x.strClientFirst @x.strClientMiddle @x.strClientLast</span><br /><br />
+                                                        <label>Date Requested: </label> @x.dtmProjReqHDateRec.ToString()<br /><br />
+                                                        <label>Project Description:</label><br />
+                                                        <p>@x.strProjReqHDesc</p>
+                                                    }
+                                                }
+                                            </div>
+                                            <div class="col-md-6">
+                                                @{
+                                                    foreach (var x in viewProj)
+                                                    {
+                                                        <label>Requested service:</label> @x.strServName<br /><br />
+                                                        <label>Request description:</label><br />
+                                                        <p>@x.strProjReqDDesc</p>
+                                                        <br />
+                                                    }
+                                                    <label>Assigned Section:</label><br />
+                                                    <select name="pSec" id="pSec" class="btn btn-default dropdown-toggle" selected="">
+                                                        @{
+                                                            foreach (var y in viewSec)
+                                                            {
+                                                                <option value="@y.strSecId">@y.strSecName</option>
+                                                            }
+                                                        }
+                                                    </select><br /><br />
+                                                    <label>Priority Level:</label><br />
+                                                    <select name="pPrio" id="pPrio" class="btn btn-default dropdown-toggle" selected="">
+                                                        <option value="1">Level 1</option>
+                                                        <option value="2">Level 2</option>
+                                                        <option value="3">Level 3</option>
+                                                        <option value="4">Level 4</option>
+                                                        <option value="5">Level 5</option>
+                                                    </select><br /><br />
+                                                }
+                                                @{ 
+                                                    foreach(var x in viewHeader)
+                                                    {
+                                                        <script>
+                                                            document.getElementById("pSec").value = "@x.strProjHSecId";
+                                                            document.getElementById("pPrio").value = "@x.intProjHPriority";
+                                                        </script>
+                                                    }
+                                                }
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div role="tabpanel" class="tab-pane" id="items">
+                                    <br />
+                                    Items to be used:
+                                    <a href="#" type="button" class="btn btn-warning" style="float:right" id="addReq" name="addReq" onclick="addReq()"><span class="glyphicon glyphicon-plus-sign"></span></a>
+                                    <div class="table-responsive">
+                                        <table id="tableRequest" class="table dataTable no-footer" role="grid">
+                                            <thead>
+                                                <tr>
+                                                    <th>Item Name</th>
+                                                    <th>Unit</th>
+                                                    <th>Qty.</th>
+                                                    <th>Action</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody></tbody>
+                                        </table>
+                                    </div>
+                                    @{ 
+                                        foreach(var x in viewProjItem)
+                                        {
+                                            <script>
+                                                var table = document.getElementById("tableRequest");
+                                                var x = table.rows.length;
+                                                var row = table.insertRow(x);
+                                                var cell1 = row.insertCell(0);
+                                                var cell2 = row.insertCell(1);
+                                                var cell3 = row.insertCell(2);
+                                                var cell4 = row.insertCell(3);
+                                                cell1.innerHTML = '<select class="btn btn-default dropdown-toggle"></select>';
+                                                cell2.innerHTML = '<select class="btn btn-default dropdown-toggle"></select>';
+                                                cell3.innerHTML = '<input type="number" class="form-control" placeholder="1-99" min="0" max="100" step="1"/>';
+                                                cell4.innerHTML = '<a href="#" type="button" class="btn btn-danger" onclick="remove(this)"><span class="glyphicon glyphicon-remove-sign"></span></a>';
+                                                table.rows[x].cells[0].children[0].setAttribute("id", "projItem");
+                                                table.rows[x].cells[0].children[0].setAttribute("name", "projItem");
+                                                table.rows[x].cells[1].children[0].setAttribute("id", "projUnit");
+                                                table.rows[x].cells[1].children[0].setAttribute("name", "projUnit");
+                                                table.rows[x].cells[1].children[0].setAttribute("id", "projUnit");
+                                                table.rows[x].cells[2].children[0].setAttribute("name", "projQty");
+                                                table.rows[x].cells[2].children[0].setAttribute("id", "projQty");
+                                                for (var y = 0; y < itemId.length; y++) {
+                                                    var option = document.createElement("option");
+                                                    option.setAttribute("value", itemId[y]);
+                                                    option.text = itemName[y];
+                                                    table.rows[x].cells[0].children[0].appendChild(option);
+                                                }
+                                                for (var y = 0; y < unitId.length; y++) {
+                                                    var option = document.createElement("option");
+                                                    option.setAttribute("value", unitId[y]);
+                                                    option.text = unitName[y];
+                                                    table.rows[x].cells[1].children[0].appendChild(option);
+                                                }
+                                                table.rows[x].cells[0].children[0].value = "@x.strProjDItemId";
+                                                table.rows[x].cells[1].children[0].value = "@x.strProjDUnitId";
+                                                table.rows[x].cells[2].children[0].value = "@x.intProjDQty";
+                                            </script>
+                                        }
+                                    }
+                                </div>
+                                <div role="tabpanel" class="tab-pane" id="works">
+                                    <br />
+                                    Filter Employees to work based on skills<br />
+                                    <div class="col-md-6">
+                                        <div class="table-responsive dyn">
+                                            <table id="tableEmp" class="table" role="grid">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Employee Name</th>
+                                                        <th>Employee Skills</th>
+                                                        <th>Action</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    @{
+                                                        foreach (var x in viewEmp)
+                                                        {
+                                                            <tr>
+                                                                <td>@x.strEmpFirst @x.strEmpMiddle @x.strEmpLast</td>
+                                                                <td>
+                                                                    <ul>
+                                                                        @{
+                                                                            var viewEmpSkill = db.Query(selectEmpSkill, x.strEmpId);
+                                                                            foreach (var y in viewEmpSkill)
+                                                                            {
+                                                                                <li>@y.strJobSName</li>
+                                                                            }
+                                                                        }
+                                                                    </ul>
+                                                                </td>
+                                                                <td>
+                                                                    <input type="checkbox" class="checkbox" name="pEmps" id="@x.strEmpId" title="@x.strEmpFirst @x.strEmpLast" value="@x.strEmpId" onchange="addTo(this,this.title,this.id)"/>
+                                                                </td>
+                                                            </tr>
+                                                         }
+                                                    }
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        @{ 
+                                            foreach(var x in viewProjEmp)
+                                            {
+                                                <script>
+                                                    document.getElementById("@x.strEmpId").checked = true;
+                                                </script>
+                                            }
+                                        }
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="table-responsive dyn">
+                                            <table id="tableEmpName" class="table dataTable no-footer" role="grid">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Associated Employee</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody></tbody>
+                                            </table>
+                                        </div>
+                                        @{
+                                            foreach (var x in viewProjEmp)
+                                            {
+                                                <script>
+                                                    var table = document.getElementById("tableEmpName");
+                                                    var x = table.rows.length;
+                                                    var row = table.insertRow(x);
+                                                    var cell1 = row.insertCell(0)
+                                                    cell1.innerHTML = '<input class="form-control" value="@x.strEmpFirst @x.strEmpLast" readonly/>';
+                                                    //table.rows[x].cells[0].children[0].setAttribute("value", "");
+                                                    table.rows[x].cells[0].children[0].setAttribute("id", "@x.strEmpId");
+                                                    table.rows[x].setAttribute("id", "@x.strEmpId");
+                                                </script>
+                                            }
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <label style="float:left">All labels with "*" are required</label>
+                    <input name="submitAdd" type="submit" class="btn btn-default" value="Submit" />
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+<!--SUCCESS-->
+<div class="modal fade" id="success" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-sm" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title"><span class="success">SUCCESS</span></h4>
+            </div>
+            <div class="modal-body">
+                <p>SUCCESS!</p>
+            </div>
+        </div>
+    </div>
+</div>

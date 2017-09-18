@@ -1,0 +1,397 @@
+﻿@using WebMatrix.Data;
+@{
+    ViewBag.Title = "Unit";
+    Layout = "~/Views/Shared/_LayoutAdminMaintenance.cshtml";
+    var db = Database.Open("dbConnect");
+    var view = db.Query("SELECT * FROM tblUnit");
+    var selectUnit = "SELECT * FROM tblUnit WHERE strUnitId=(@0)";
+    /*var count = db.QueryValue("SELECT COUNT(*) FROM tblUnit") + 1;
+    var leftPad = "SELECT CONCAT('UNIT-', LPAD((@0),4,'0'))";
+    var unitId = db.QueryValue(leftPad, count);*/
+    var viewId = Request["viewId"];
+    var editId = Request["editId"];
+    var unitId = "";
+    var unitName = "";
+    var unitDesc = "";
+    string[] error = new string[5];
+    string[] errorEdit = new string[5];
+    var valid = 0;
+    var validEdit = 0;
+    var id = db.QueryValue("SELECT strUnitId FROM tblUnit ORDER BY strUnitId DESC LIMIT 1");
+    char[] lastID = id.ToCharArray();
+    int ctr = 0;
+    string tempID;
+    string[] tempNew = new string[100];
+    string newID = "";
+    bool add = true;
+    for (ctr = (lastID.Length) - 1; ctr >= 0; ctr--)
+    {
+
+        tempID = lastID[ctr].ToString();
+
+        if (add)
+        {
+            if (tempID == "1" || tempID == "2" || tempID == "3" || tempID == "4" || tempID == "5" || tempID == "6" || tempID == "7" || tempID == "8" || tempID == "9" || tempID == "0")
+            {
+                if (tempID == "9")
+                {
+                    tempID = "0";
+                    tempNew[ctr] = tempID;
+
+                }
+                else
+                {
+                    tempID = (Convert.ToInt32(tempID.ToString()) + 1).ToString();
+                    tempNew[ctr] = tempID;
+                    add = false;
+                }
+            }
+            else
+            {
+                tempNew[ctr] = tempID;
+            }
+        }
+        tempNew[ctr] = tempID;
+    }
+    for (ctr = 0; ctr < lastID.Length; ctr++)
+    {
+        newID = newID + tempNew[ctr].ToString();
+    }
+    if (viewId != null)
+    {
+        <script>
+            $(document).ready(function () {
+                $("#views").modal();
+            });
+        </script>
+    }
+    if (editId != null)
+    {
+        <script>
+            $(document).ready(function () {
+                $("#edits").modal();
+            });
+        </script>
+    }
+    if (IsPost)
+    {
+        if (Request.Form["submitAdd"] != null)
+        {
+            unitId = Request["newId"].Trim();
+            unitName = Request["unitName"].Trim();
+            unitDesc = Request["unitDesc"].Trim();
+            if (unitId.IsEmpty())
+            {
+                valid++;error[2] = "Unit Id is required";
+            }
+            if (unitName.IsEmpty())
+            {
+                valid++;
+                error[0] = "Unit Name is Required";
+            }
+            foreach (var x in view)
+            {
+                if (unitName == x.strUnitName)
+                {
+                    valid++; error[1] = "Unit already taken";
+                }
+                if (unitId == x.strUnitId)
+                {
+                    valid++; error[3] = "Unit Id already taken";
+                }
+            }
+            if (valid == 0)
+            {
+                var insert = "INSERT INTO tblUnit (strUnitId, strUnitName, strUnitDesc) VALUES (@0,@1,@2)";
+                db.Query(insert, unitId, unitName, unitDesc);
+                <script>
+                    $(document).ready(function () {
+                        $("#views").modal('hide');
+                        $("#edits").modal('hide');
+                        $("#success").modal({ backdrop: "static" });
+                        setTimeout(function () {
+                            $("#success").hide();
+                            window.location.href = "../Admin/Unit";
+                        }, 2000);
+                    });
+                </script>
+            }
+            else
+            {
+                <script>
+                    $(document).ready(function () {
+                        $("#add1").modal();
+                        $("#views").modal('hide');
+                        $("#edits").modal('hide');
+                    });
+                </script>
+            }
+        }
+        if (Request.Form["submitEdit"] != null)
+        {
+            var eunitName = Request["eunitName"].Trim();
+            var eunitDesc = Request["eunitDesc"].Trim();
+            if (eunitName.IsEmpty())
+            {
+                validEdit++;
+                errorEdit[0] = "Unit Name is Required";
+            }
+            foreach (var x in view)
+            {
+                if (eunitName == x.strUnitName && editId != x.strUnitId)
+                {
+                    validEdit++; errorEdit[1] = "Unit already taken";
+                }
+            }
+            if (validEdit == 0)
+            {
+                var update = "UPDATE tblUnit SET strUnitName=(@0), strUnitDesc=(@1) WHERE strUnitId=(@2)";
+                db.Query(update, eunitName, eunitDesc, editId);
+                <script>
+                    $(document).ready(function () {
+                        $("#edits").modal('hide');
+                        $("#success").modal({ backdrop: "static" });
+                        setTimeout(function () {
+                            $("#success").hide();
+                            window.location.href = "../Admin/Unit";
+                        }, 2000);
+                    });
+                </script>
+            }
+            else
+            {
+                <script>
+                    $(document).ready(function () {
+                        $("#edits").modal();
+                    });
+                </script>
+            }
+        }
+    }
+    <script>
+        $(document).ready(function () {
+            $('#tableData').DataTable();
+        });
+        function validate(event, idx) {
+            var char = String.fromCharCode(event.which);
+            var patt = /[`~!#$%^&*()_+={}|:";@@'<>,.?\\//\[\]]/;
+            var res = patt.test(char);
+            if (res) {
+                $('#' + idx + '').popover('show');
+                return false;
+            }
+            else {
+                $('#' + idx + '').popover('hide');
+            }
+        }
+        $(document).on("click", "#view", function () {
+            var viewId = $(this).data("id");
+            window.location.href = "../Admin/Unit?viewId=" + viewId;
+        });
+        $(document).on("click", "#edit", function () {
+            var editId = $(this).data("id");
+            window.location.href = "../Admin/Unit?editId=" + editId;
+        });
+    </script>
+}
+<div class="navbar navbar-default">
+    <div class="navbar-header">
+        <div class="navbar-brand">Inventory</div>
+        <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#myNavbar1">
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+        </button>
+    </div>
+    <div class="collapse navbar-collapse" id="myNavbar1">
+        <ul class="nav navbar-nav navbar-right">
+            <li><a href="../Admin/ItemType">Item Types</a></li>
+            <li class="active"><a href="../Admin/Unit">Units</a></li>
+            <li><a href="../Admin/Item">Items</a></li>
+        </ul>
+    </div>
+</div>
+<hr />
+<div class="row">
+    <div class="col-md-12" style="margin-bottom: 1%">
+        <div class="col-md-2"><button class="btn btn-default" data-toggle="modal" data-target="#add1">Add Unit</button></div>
+    </div>
+    <div class="col-md-12">
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <h1 class="panel-title">Units</h1>
+            </div>
+            <div class="panel-body">
+                <div class="table-responsive">
+                    <table id="tableData" class="table dataTable no-footer" role="grid">
+                        <thead>
+                            <tr>
+                                <th>Unit Id</th>
+                                <th>Unit</th>
+                                <th>Description</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @{
+                                foreach (var x in view)
+                                {
+                                    <tr>
+                                        <td>@x.strUnitId</td>
+                                        <td>@x.strUnitName</td>
+                                        <td>@x.strUnitDesc</td>
+                                        <td>
+                                            <button class="btn btn-primary" id="view" name="view" data-id="@x.strUnitId">View</button>
+                                            <button class="btn btn-success" id="edit" name="edit" data-id="@x.strUnitId">Edit</button>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!--ADD-->
+<div class="modal fade" id="add1" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-sm" role="document">
+        <form action="" method="post">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    <h4 class="modal-title">Add Unit</h4>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-12">
+                            @{
+                                if (valid != 0)
+                                {
+                                    <div class="alert alert-danger" role="alert">
+                                        <ul>
+                                            @{
+                                                for (int x = 0; x < error.Length; x++)
+                                                {
+                                                    if (error[x] != null)
+                                                    {
+                                                        <li>@error[x]</li>
+                                                    }
+                                                }
+                                            }
+                                        </ul>
+                                    </div>
+                                                }
+                            }
+                            <label>Unit Id:</label>
+                            <input type="text" class="form-control" id="newId" name="newId" value="@newID"/>
+                            <label>Unit Name:*</label>
+                            <input type="text" class="form-control" id="unitName" name="unitName" placeholder="Unit" onkeypress="return validate(event, this.id)" data-toggle="popover" value="@unitName" />
+                            <label>Description:</label>
+                            <textarea class="form-control" id="unitDesc" name="unitDesc" placeholder="Description" onkeypress="return validate(event,this.id)" data-toggle="popover">@unitDesc</textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <label style="float:left">All labels with "*" are required</label>
+                    <input name="submitAdd" type="submit" class="btn btn-default" value="Submit" />
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+<!--VIEW-->
+<div class="modal fade" id="views" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-sm" role="document">
+        <form action="" method="post">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    <h4 class="modal-title">View Unit</h4>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-12">
+                            @{
+                                var viewUnit = db.Query(selectUnit, viewId);
+                                foreach (var x in viewUnit)
+                                {
+                                    <label>Unit Id: @x.strUnitId</label><br />
+                                    <label>Unit Name:</label>
+                                    <input type="text" class="form-control" id="vunitName" name="vunitName" placeholder="Unit" value="@x.strUnitName" readonly />
+                                    <label>Description:</label>
+                                    <textarea class="form-control" id="vunitDesc" name="vunitDesc" placeholder="Unit" readonly>@x.strUnitDesc</textarea>
+                                }
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+<!--EDIT-->
+<div class="modal fade" id="edits" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-sm" role="document">
+        <form action="" method="post">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    <h4 class="modal-title">Edit Unit</h4>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-12">
+                            @{
+                                if (validEdit != 0)
+                                {
+                                    <div class="alert alert-danger" role="alert">
+                                        <ul>
+                                            @{
+                                                for (int x = 0; x < error.Length; x++)
+                                                {
+                                                    if (errorEdit[x] != null)
+                                                    {
+                                                        <li>@errorEdit[x]</li>
+                                                    }
+                                                }
+                                            }
+                                        </ul>
+                                    </div>
+                                                }
+                            }
+                            @{
+                                viewUnit = db.Query(selectUnit, editId);
+                                foreach (var x in viewUnit)
+                                {
+                                    <label>Unit Id: @x.strUnitId</label><br />
+                                    <label>Unit Name:*</label>
+                                    <input type="text" class="form-control" id="eunitName" name="eunitName" placeholder="Unit" onkeypress="return validate(event, this.id)" data-toggle="popover" value="@x.strUnitName" />
+                                    <label>Description:</label>
+                                    <textarea class="form-control" id="eunitDesc" name="eunitDesc" placeholder="Description" onkeypress="return validate(event,this.id)" data-toggle="popover">@x.strUnitDesc</textarea>
+                                }
+                            }
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <label style="float:left">All labels with "*" are required</label>
+                    <input name="submitEdit" type="submit" class="btn btn-default" value="Submit" />
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+<!--SUCCESS-->
+<div class="modal fade" id="success" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-sm" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title"><span class="success">SUCCESS</span></h4>
+            </div>
+            <div class="modal-body">
+                <p>SUCCESS!</p>
+            </div>
+        </div>
+    </div>
+</div>
